@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rust ZIM Viewer</title>
+    <!-- Use Tailwind CSS for easy styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen p-4"
+  >
+    <div
+      class="w-full max-w-4xl bg-white shadow-xl rounded-2xl p-6 sm:p-10 transition-all duration-300"
+    >
+      <h1
+        class="text-3xl sm:text-4xl font-extrabold text-center mb-6 text-gray-900"
+      >
+        Rust ZIM Viewer
+      </h1>
+      <p class="text-center text-gray-600 mb-8">
+        Upload a `.zim` file to view its simulated contents.
+      </p>
+
+      <form
+        id="upload-form"
+        class="relative w-full border-2 border-dashed border-gray-300 rounded-xl p-6 sm:p-12 text-center transition-colors duration-200 hover:border-blue-500"
+      >
+        <input
+          id="file-upload"
+          type="file"
+          name="zim_file"
+          accept=".zim"
+          class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        />
+        <div class="flex flex-col items-center justify-center space-y-4">
+          <svg
+            class="w-12 h-12 text-gray-400"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" x2="12" y1="3" y2="15" />
+          </svg>
+          <p class="text-gray-500 font-medium">
+            Drag and drop your file here, or
+            <span class="text-blue-600 underline">browse</span>
+          </p>
+          <p class="text-sm text-gray-400">Supported file type: .zim</p>
+        </div>
+      </form>
+
+      <div
+        id="file-info"
+        class="mt-6 p-4 bg-gray-100 rounded-xl flex items-center justify-between hidden"
+      >
+        <div class="flex items-center space-x-3">
+          <svg
+            class="w-6 h-6 text-blue-500"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"
+            />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+          <span id="file-name" class="font-medium text-gray-700"></span>
+        </div>
+        <button
+          id="remove-file-btn"
+          class="text-red-500 hover:text-red-700 font-semibold text-sm transition-colors duration-200"
+        >
+          Remove
+        </button>
+      </div>
+
+      <div id="status" class="mt-8"></div>
+
+      <div
+        id="content-display"
+        class="mt-8 p-6 bg-white border border-gray-200 rounded-xl shadow-inner overflow-y-auto max-h-[60vh] hidden"
+      ></div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("upload-form");
+        const fileInput = document.getElementById("file-upload");
+        const fileInfo = document.getElementById("file-info");
+        const fileNameSpan = document.getElementById("file-name");
+        const removeFileBtn = document.getElementById("remove-file-btn");
+        const statusDiv = document.getElementById("status");
+        const contentDisplay = document.getElementById("content-display");
+
+        fileInput.addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            // Update UI to show selected file
+            fileNameSpan.textContent = file.name;
+            fileInfo.classList.remove("hidden");
+            form.classList.add("hidden");
+            statusDiv.innerHTML = `<div class="flex justify-center items-center space-x-2">
+                        <svg class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <p class="text-gray-500">Processing file...</p>
+                    </div>`;
+            contentDisplay.classList.add("hidden");
+
+            const formData = new FormData();
+            formData.append("zim_file", file);
+
+            try {
+              const response = await fetch("/upload", {
+                method: "POST",
+                body: formData,
+              });
+
+              const result = await response.json();
+
+              if (response.ok) {
+                contentDisplay.innerHTML = result.content;
+                contentDisplay.classList.remove("hidden");
+                statusDiv.innerHTML = "";
+              } else {
+                statusDiv.innerHTML = `<div class="p-4 bg-red-100 text-red-700 rounded-xl font-medium">${result.error || "Unknown error"}</div>`;
+              }
+            } catch (e) {
+              statusDiv.innerHTML = `<div class="p-4 bg-red-100 text-red-700 rounded-xl font-medium">Error: ${e.message}</div>`;
+            }
+          }
+        });
+
+        removeFileBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          fileInput.value = null; // Reset the file input
+          form.classList.remove("hidden");
+          fileInfo.classList.add("hidden");
+          contentDisplay.classList.add("hidden");
+          statusDiv.innerHTML = "";
+        });
+
+        // Handle drag and drop events for the form area
+        form.addEventListener("dragover", (e) => {
+          e.preventDefault();
+        });
+        form.addEventListener("drop", (e) => {
+          e.preventDefault();
+          if (e.dataTransfer.files[0]) {
+            fileInput.files = e.dataTransfer.files;
+            fileInput.dispatchEvent(new Event("change"));
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
