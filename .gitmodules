@@ -1,0 +1,6 @@
+[submodule "zim-sys"]
+	path = zim-sys
+	url = https://gitlab.com/alexanderacker/zim-sys.git
+[submodule "zim-rs"]
+	path = zim-rs
+	url = https://gitlab.com/alexanderacker/zim-rs.git
