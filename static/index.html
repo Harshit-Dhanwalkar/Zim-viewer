@@ -26,6 +26,7 @@
         Upload a `.zim` file to view its simulated contents.
       </p>
 
+      <!-- Upload Form -->
       <form
         id="upload-form"
         class="relative w-full border-2 border-dashed border-gray-300 rounded-xl p-6 sm:p-12 text-center transition-colors duration-200 hover:border-blue-500"
@@ -41,18 +42,33 @@
           <svg
             class="w-12 h-12 text-gray-400"
             xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
             fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            viewBox="0 0 24 24"
           >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" x2="12" y1="3" y2="15" />
+            <path
+              d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <polyline
+              points="17 8 12 3 7 8"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <line
+              x1="12"
+              x2="12"
+              y1="3"
+              y2="15"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
           </svg>
           <p class="text-gray-500 font-medium">
             Drag and drop your file here, or
@@ -62,6 +78,7 @@
         </div>
       </form>
 
+      <!-- File Info -->
       <div
         id="file-info"
         class="mt-6 p-4 bg-gray-100 rounded-xl flex items-center justify-between hidden"
@@ -70,19 +87,23 @@
           <svg
             class="w-6 h-6 text-blue-500"
             xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
             fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            viewBox="0 0 24 24"
           >
             <path
               d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
             />
-            <polyline points="14 2 14 8 20 8" />
+            <polyline
+              points="14 2 14 8 20 8"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
           </svg>
           <span id="file-name" class="font-medium text-gray-700"></span>
         </div>
@@ -94,8 +115,24 @@
         </button>
       </div>
 
+      <!-- Status / Progress -->
       <div id="status" class="mt-8"></div>
+      <div id="progress-container" class="mt-4 hidden">
+        <div class="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
+          <div
+            id="progress-bar"
+            class="bg-blue-500 h-6 text-xs text-white text-center leading-6"
+            style="width: 0%"
+          >
+            0%
+          </div>
+        </div>
+        <div id="progress-text" class="text-gray-600 text-sm mt-2">
+          0 MB processed
+        </div>
+      </div>
 
+      <!-- Content Display -->
       <div
         id="content-display"
         class="mt-8 p-6 bg-white border border-gray-200 rounded-xl shadow-inner overflow-y-auto max-h-[60vh] hidden"
@@ -103,6 +140,14 @@
     </div>
 
     <script>
+      function formatBytes(bytes) {
+        if (bytes === 0) return "0 Bytes";
+        const k = 1024;
+        const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+      }
+
       document.addEventListener("DOMContentLoaded", () => {
         const form = document.getElementById("upload-form");
         const fileInput = document.getElementById("file-upload");
@@ -110,57 +155,76 @@
         const fileNameSpan = document.getElementById("file-name");
         const removeFileBtn = document.getElementById("remove-file-btn");
         const statusDiv = document.getElementById("status");
+        const progressContainer = document.getElementById("progress-container");
+        const progressBar = document.getElementById("progress-bar");
+        const progressText = document.getElementById("progress-text");
         const contentDisplay = document.getElementById("content-display");
 
         fileInput.addEventListener("change", async (e) => {
           const file = e.target.files[0];
-          if (file) {
-            fileNameSpan.textContent = file.name;
-            fileInfo.classList.remove("hidden");
-            form.classList.add("hidden");
-            statusDiv.innerHTML = `<div class="flex justify-center items-center space-x-2">
-                            <svg class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                            <p class="text-gray-500">Processing file...</p>
-                        </div>`;
-            contentDisplay.classList.add("hidden");
+          if (!file) return;
 
-            const formData = new FormData();
-            formData.append("zim_file", file);
+          fileNameSpan.textContent = file.name;
+          fileInfo.classList.remove("hidden");
+          form.classList.add("hidden");
+          statusDiv.innerHTML = "";
+          contentDisplay.classList.add("hidden");
 
-            try {
-              const response = await fetch("/upload", {
-                method: "POST",
-                body: formData,
-              });
+          // Show progress bar
+          progressContainer.classList.remove("hidden");
+          progressBar.style.width = "0%";
+          progressText.textContent = "0 MB processed";
 
-              const result = await response.json();
+          // Connect to SSE for progress
+          const source = new EventSource("/progress");
+          source.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            const processed = data.processed_bytes;
+            const total = file.size;
+            const percent = ((processed / total) * 100).toFixed(2);
 
-              if (response.ok) {
-                contentDisplay.innerHTML = result.content;
-                contentDisplay.classList.remove("hidden");
-                statusDiv.innerHTML = "";
-              } else {
-                statusDiv.innerHTML = `<div class="p-4 bg-red-100 text-red-700 rounded-xl font-medium">${result.error || "Unknown error"}</div>`;
-              }
-            } catch (e) {
-              statusDiv.innerHTML = `<div class="p-4 bg-red-100 text-red-700 rounded-xl font-medium">Error: ${e.message}</div>`;
+            progressBar.style.width = percent + "%";
+            progressBar.textContent = percent + "%";
+            progressText.textContent =
+              formatBytes(processed) + " of " + formatBytes(total);
+          };
+
+          const formData = new FormData();
+          formData.append("zim_file", file);
+
+          try {
+            const response = await fetch("/upload", {
+              method: "POST",
+              body: formData,
+            });
+            const result = await response.json();
+            source.close();
+
+            if (response.ok) {
+              contentDisplay.innerHTML = result.content;
+              contentDisplay.classList.remove("hidden");
+              progressBar.style.width = "100%";
+              progressBar.textContent = "100%";
+            } else {
+              statusDiv.innerHTML = `<div class="p-4 bg-red-100 text-red-700 rounded-xl font-medium">${result.error || "Unknown error"}</div>`;
             }
+          } catch (e) {
+            source.close();
+            statusDiv.innerHTML = `<div class="p-4 bg-red-100 text-red-700 rounded-xl font-medium">Error: ${e.message}</div>`;
           }
         });
 
         removeFileBtn.addEventListener("click", (e) => {
           e.preventDefault();
-          fileInput.value = null; // Reset the file input
+          fileInput.value = null;
           form.classList.remove("hidden");
           fileInfo.classList.add("hidden");
           contentDisplay.classList.add("hidden");
+          progressContainer.classList.add("hidden");
           statusDiv.innerHTML = "";
         });
 
-        // Handle drag and drop events for the form area
-        form.addEventListener("dragover", (e) => {
-          e.preventDefault();
-        });
+        form.addEventListener("dragover", (e) => e.preventDefault());
         form.addEventListener("drop", (e) => {
           e.preventDefault();
           if (e.dataTransfer.files[0]) {
