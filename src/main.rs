@@ -19,9 +19,6 @@ use tokio_stream::wrappers::IntervalStream;
 use zim_rs::archive::Archive;
 use zim_rs::search::{Query, Searcher};
 
-/// Shared app state:
-/// - processed_bytes: Atomic counter updated during upload/processing
-/// - zim_path: Option<String> stored after upload finishes
 #[derive(Clone)]
 struct AppState {
     processed_bytes: Arc<AtomicU64>,
@@ -45,28 +42,55 @@ struct ArticleSummary {
     title: String,
 }
 
-/// helper: search via zim-rs (blocking; small wrapper)
 fn search_zim_file(zim_file_path: &str, query: &str) -> Result<Vec<ArticleSummary>> {
+    println!(
+        "Searching ZIM file '{}' for query '{}'",
+        zim_file_path, query
+    );
     let zim = Archive::new(zim_file_path).map_err(|_| anyhow!("failed to open archive"))?;
     let mut searcher = Searcher::new(&zim).map_err(|_| anyhow!("failed to create searcher"))?;
+
     let query_obj = Query::new(query).map_err(|_| anyhow!("invalid query"))?;
     let search = searcher
         .search(&query_obj)
         .map_err(|_| anyhow!("search failed"))?;
-    let result_set = search
+    let mut result_vec: Vec<_> = search
         .get_results(0, 50)
-        .map_err(|_| anyhow!("failed to get results"))?;
-
-    Ok(result_set
+        .map_err(|_| anyhow!("failed to get results"))?
         .into_iter()
-        .filter_map(|r| r.ok())
-        .map(|entry| ArticleSummary {
-            title: entry.get_title(),
+        .collect();
+
+    if result_vec.is_empty() {
+        println!("No results found for '{}', trying lowercase search", query);
+        let lower_query = query.to_lowercase();
+        let query_obj = Query::new(&lower_query).map_err(|_| anyhow!("invalid query"))?;
+        let search = searcher
+            .search(&query_obj)
+            .map_err(|_| anyhow!("search failed"))?;
+        result_vec = search
+            .get_results(0, 50)
+            .map_err(|_| anyhow!("failed to get results"))?
+            .into_iter()
+            .collect();
+    }
+
+    let results: Vec<ArticleSummary> = result_vec
+        .into_iter()
+        .filter_map(|r| match r {
+            Ok(entry) => Some(ArticleSummary {
+                title: entry.get_title(),
+            }),
+            Err(e) => {
+                eprintln!("Search entry error: {:?}", e);
+                None
+            }
         })
-        .collect())
+        .collect();
+
+    println!("Search returned {} results", results.len());
+    Ok(results)
 }
 
-/// helper: show a few entries as HTML (used by homepage after upload)
 fn parse_zim_file_preview(file_path: &str) -> Result<String> {
     let zim = Archive::new(file_path).map_err(|_| anyhow!("failed to open zim file"))?;
     let mut html = String::new();
@@ -75,7 +99,6 @@ fn parse_zim_file_preview(file_path: &str) -> Result<String> {
     for idx in 0..std::cmp::min(10, total) {
         if let Ok(entry) = zim.get_entry_bytitle_index(idx) {
             let title = entry.get_title();
-            // simple safe link (title may contain characters; client decode)
             html += &format!(
                 r#"<li><a href="/article/{}" class="text-blue-500 underline">{}</a></li>"#,
                 urlencoding::encode(&title),
@@ -97,10 +120,8 @@ fn parse_zim_file_preview(file_path: &str) -> Result<String> {
     ))
 }
 
-/// SSE endpoint: streams `data: ...\n\n` messages with processed bytes
 #[get("/progress")]
 async fn progress(state: web::Data<AppState>) -> impl Responder {
-    // create a stream that yields current processed bytes every 500ms
     let processed = state.processed_bytes.clone();
     let s = stream! {
         loop {
@@ -117,13 +138,11 @@ async fn progress(state: web::Data<AppState>) -> impl Responder {
         .streaming(s)
 }
 
-/// Serve static index.html
 #[get("/")]
 async fn index() -> actix_web::Result<NamedFile> {
     Ok(NamedFile::open("static/index.html")?)
 }
 
-/// Serve article by title (title is URL-encoded on link)
 #[get("/article/{title}")]
 async fn article(path: web::Path<String>, state: web::Data<AppState>) -> impl Responder {
     let title_enc = path.into_inner();
@@ -138,7 +157,6 @@ async fn article(path: web::Path<String>, state: web::Data<AppState>) -> impl Re
         None => return HttpResponse::BadRequest().body("No ZIM loaded"),
     };
 
-    // Open archive (blocking) — quick attempt; for heavy work push to web::block if needed
     match Archive::new(&path) {
         Ok(zim) => {
             // try entry by title string
@@ -147,7 +165,6 @@ async fn article(path: web::Path<String>, state: web::Data<AppState>) -> impl Re
                     if let Ok(item) = entry.get_item(true) {
                         if let Ok(blob) = item.get_data() {
                             let bytes = blob.data().as_ref();
-                            // attempt to serve as utf-8 html; otherwise fallback to bytes
                             let content = String::from_utf8_lossy(bytes).into_owned();
                             return HttpResponse::Ok()
                                 .content_type("text/html; charset=utf-8")
@@ -163,11 +180,6 @@ async fn article(path: web::Path<String>, state: web::Data<AppState>) -> impl Re
     }
 }
 
-/// upload handler:
-/// - streams incoming multipart
-/// - writes chunks directly to a NamedTempFile (no full-RAM buffering)
-/// - sends chunks to a background thread pool (rayon via par_bridge) for processing if needed
-/// - updates `state.processed_bytes` as bytes are received/handled
 #[post("/upload")]
 async fn upload(
     mut payload: Multipart,
@@ -183,17 +195,13 @@ async fn upload(
 
     // background thread: consume channel in parallel
     std::thread::spawn(move || {
-        // rx.into_iter() yields Vec<u8>; use par_bridge to parallelize processing
         rx.into_iter().par_bridge().for_each(|chunk| {
-            // TODO: replace this with actual CPU work (parsing entries etc.)
+            // TODO: CPU work
             // e.g., parse the chunk, index, upload part, etc.
-            // Here we just simulate a small CPU job:
             let _len = chunk.len();
-            // ... CPU work ...
         });
     });
 
-    // Stream upload: for each chunk, write to file and update processed_bytes and send to tx
     while let Some(item) = payload.next().await {
         let mut field = item?;
         while let Some(chunk_res) = field.next().await {
@@ -201,16 +209,13 @@ async fn upload(
             // write to temp file
             file.write(&chunk)
                 .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
-            // update shared processed counter
             state
                 .processed_bytes
                 .fetch_add(chunk.len() as u64, Ordering::Relaxed);
-            // send chunk for background processing (ignore send error if receiver dropped)
             let _ = tx.send(chunk.to_vec());
         }
     }
 
-    // close file (persist)
     let persisted_path = path_buf.to_string_lossy().into_owned();
 
     // save path into state
@@ -219,10 +224,7 @@ async fn upload(
         *guard = Some(persisted_path.clone());
     }
 
-    // optional: reset processed_bytes to 0 (or keep cumulative)
-    // state.processed_bytes.store(0, Ordering::Relaxed);
-
-    // build preview HTML (small)
+    // build preview HTML
     let preview = match parse_zim_file_preview(&persisted_path) {
         Ok(h) => h,
         Err(e) => format!("Uploaded, but preview failed: {}", e),
@@ -234,7 +236,6 @@ async fn upload(
     }))
 }
 
-/// search endpoint example using web::block to avoid blocking async reactor
 #[post("/search")]
 async fn search_articles(req: web::Json<SearchRequest>) -> impl Responder {
     let file_path = req.file_path.clone();
@@ -266,7 +267,6 @@ async fn main() -> std::io::Result<()> {
             .service(upload)
             .service(article)
             .service(search_articles)
-            // serve static files under /static (keeps your index.html)
             .service(actix_files::Files::new("/static", "./static").index_file("index.html"))
     })
     .bind(("127.0.0.1", 8080))?
