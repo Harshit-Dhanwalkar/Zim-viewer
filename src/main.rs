@@ -149,7 +149,7 @@ async fn progress(state: web::Data<AppState>) -> impl Responder {
 
 #[get("/")]
 async fn index() -> actix_web::Result<NamedFile> {
-    Ok(NamedFile::open("static/index.html")?)
+    Ok(NamedFile::open("./static/index.html")?)
 }
 
 #[get("/article/{title}")]
@@ -204,9 +204,9 @@ async fn upload(
 
     let mut original_file_name: Option<String> = None;
     let mut hasher = Sha256::new();
-    let mut file_data = Vec::new();
+    let mut temp_file =
+        NamedTempFile::new().map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
 
-    // Read all chunks and hash them
     while let Some(item) = payload.next().await {
         let mut field = item?;
         if original_file_name.is_none() {
@@ -217,7 +217,8 @@ async fn upload(
         while let Some(chunk_res) = field.next().await {
             let chunk = chunk_res?;
             hasher.update(&chunk);
-            file_data.extend_from_slice(&chunk);
+            io::copy(&mut chunk.as_ref(), &mut temp_file)
+                .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
             state
                 .processed_bytes
                 .fetch_add(chunk.len() as u64, Ordering::Relaxed);
@@ -249,6 +250,9 @@ async fn upload(
         let mut path_guard = state.current_zim_path.lock().unwrap();
         *path_guard = Some(cached_path.clone());
 
+        fs::remove_file(temp_file.path())
+            .unwrap_or_else(|e| eprintln!("Failed to remove temp file: {:?}", e));
+
         return Ok(web::Json(ZimResponse {
             message: "File found in cache, no re-upload needed.".to_string(),
             file_metadata: AppMetadata {
@@ -259,9 +263,8 @@ async fn upload(
         }));
     }
 
-    let mut file =
-        File::create(&persisted_path).map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
-    file.write_all(&file_data)
+    temp_file
+        .persist(&persisted_path)
         .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
 
     article_count = match Archive::new(persisted_path.to_str().unwrap()) {
