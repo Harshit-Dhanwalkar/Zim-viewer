@@ -573,6 +573,20 @@
           }
         });
 
+        contentDisplay.addEventListener("click", (e) => {
+          const targetLink = e.target.closest("a");
+          if (targetLink) {
+            const url = new URL(targetLink.href, window.location.origin);
+            const pathSegments = url.pathname.split("/");
+
+            if (pathSegments.length > 2 && pathSegments[1] === "article") {
+              e.preventDefault(); // Prevent default navigation
+              const title = decodeURIComponent(pathSegments.pop());
+              fetchArticle(title);
+            }
+          }
+        });
+
         form.addEventListener("dragover", (e) => e.preventDefault());
         form.addEventListener("drop", (e) => {
           e.preventDefault();
@@ -600,7 +614,6 @@
           const styledContent = applyWikipediaStyling(content);
           const buttonContainer = document.createElement("div");
           buttonContainer.className = "flex items-center space-x-4 mb-4";
-
           const backButton = document.createElement("button");
           backButton.textContent = "Back to Results";
           backButton.className =
@@ -618,7 +631,6 @@
           articleContentDiv.appendChild(buttonContainer);
           articleContentDiv.innerHTML += styledContent;
 
-          // Ensure the search-container with the correct 'Browse All Articles' button is visible
           document
             .getElementById("search-container")
             .classList.remove("hidden");

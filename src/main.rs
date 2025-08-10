@@ -4,18 +4,20 @@ use actix_web::{App, HttpResponse, HttpServer, Responder, get, post, web};
 use anyhow::{Result, anyhow};
 use async_stream::stream;
 use futures_util::StreamExt;
+use hex;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicU64, Ordering},
 };
 use std::time::Duration;
+use tempfile::NamedTempFile;
 use tokio::time::sleep;
-use uuid::Uuid;
 use zim_rs::archive::Archive;
 use zim_rs::search::{Query, Searcher};
 
@@ -24,6 +26,7 @@ struct AppState {
     processed_bytes: Arc<AtomicU64>,
     uploaded_files: Arc<Mutex<HashMap<String, PathBuf>>>,
     current_zim_path: Arc<Mutex<Option<PathBuf>>>,
+    file_cache: Arc<Mutex<HashMap<String, PathBuf>>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -200,21 +203,21 @@ async fn upload(
     }
 
     let mut original_file_name: Option<String> = None;
-    let new_filename = Uuid::new_v4().to_string() + ".zim";
-    let persisted_path = uploads_dir.join(&new_filename);
+    let mut hasher = Sha256::new();
+    let mut file_data = Vec::new();
 
-    let mut file =
-        File::create(&persisted_path).map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
-
+    // Read all chunks and hash them
     while let Some(item) = payload.next().await {
         let mut field = item?;
-        if let Some(filename) = field.content_disposition().get_filename() {
-            original_file_name = Some(filename.to_string());
+        if original_file_name.is_none() {
+            if let Some(filename) = field.content_disposition().get_filename() {
+                original_file_name = Some(filename.to_string());
+            }
         }
         while let Some(chunk_res) = field.next().await {
             let chunk = chunk_res?;
-            file.write(&chunk)
-                .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+            hasher.update(&chunk);
+            file_data.extend_from_slice(&chunk);
             state
                 .processed_bytes
                 .fetch_add(chunk.len() as u64, Ordering::Relaxed);
@@ -222,12 +225,49 @@ async fn upload(
     }
 
     let original_file_name = original_file_name.unwrap_or_else(|| "unknown.zim".to_string());
+    let hash = hex::encode(hasher.finalize());
+    let new_filename = format!("{}.zim", hash);
+    let persisted_path = uploads_dir.join(&new_filename);
 
-    // metadata from the uploaded ZIM file
-    let article_count = match Archive::new(persisted_path.to_str().unwrap()) {
+    let article_count;
+
+    // Check if the file already exists in the cache
+    let mut file_cache_guard = state.file_cache.lock().unwrap();
+    if let Some(cached_path) = file_cache_guard.get(&hash) {
+        let cached_path_str = cached_path
+            .to_str()
+            .ok_or_else(|| anyhow!("Invalid cached file path"))
+            .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+        article_count = match Archive::new(cached_path_str) {
+            Ok(zim) => zim.get_articlecount() as u64,
+            Err(e) => {
+                eprintln!("Failed to open cached ZIM archive: {:?}", e);
+                0
+            }
+        };
+
+        let mut path_guard = state.current_zim_path.lock().unwrap();
+        *path_guard = Some(cached_path.clone());
+
+        return Ok(web::Json(ZimResponse {
+            message: "File found in cache, no re-upload needed.".to_string(),
+            file_metadata: AppMetadata {
+                original_file_name,
+                persisted_file_path: cached_path.clone(),
+                article_count,
+            },
+        }));
+    }
+
+    let mut file =
+        File::create(&persisted_path).map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+    file.write_all(&file_data)
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+
+    article_count = match Archive::new(persisted_path.to_str().unwrap()) {
         Ok(zim) => zim.get_articlecount() as u64,
         Err(e) => {
-            eprintln!("Failed to open ZIM archive to get metadata: {:?}", e);
+            eprintln!("Failed to open new ZIM archive to get metadata: {:?}", e);
             0
         }
     };
@@ -238,6 +278,8 @@ async fn upload(
         let mut path_guard = state.current_zim_path.lock().unwrap();
         *path_guard = Some(persisted_path.clone());
     }
+
+    file_cache_guard.insert(hash, persisted_path.clone());
 
     Ok(web::Json(ZimResponse {
         message: "File uploaded successfully".to_string(),
@@ -282,6 +324,9 @@ async fn clean_cache(state: web::Data<AppState>) -> impl Responder {
                 files_guard.clear();
                 let mut path_guard = state.current_zim_path.lock().unwrap();
                 *path_guard = None;
+                // Clear the file cache
+                let mut cache_guard = state.file_cache.lock().unwrap();
+                cache_guard.clear();
                 HttpResponse::Ok().body("Cache cleaned successfully")
             }
             Err(e) => {
@@ -295,16 +340,31 @@ async fn clean_cache(state: web::Data<AppState>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Ensure the uploads directory exists on startup
     let uploads_dir = Path::new("./uploads");
     if !uploads_dir.exists() {
         fs::create_dir(uploads_dir)?;
+    }
+
+    // Load existing files into the cache on startup
+    let mut file_cache = HashMap::new();
+    if uploads_dir.exists() {
+        for entry in fs::read_dir(uploads_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() {
+                let file_name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+                if !file_name.is_empty() {
+                    file_cache.insert(file_name.to_string(), path);
+                }
+            }
+        }
     }
 
     let state = AppState {
         processed_bytes: Arc::new(AtomicU64::new(0)),
         uploaded_files: Arc::new(Mutex::new(HashMap::new())),
         current_zim_path: Arc::new(Mutex::new(None)),
+        file_cache: Arc::new(Mutex::new(file_cache)),
     };
 
     println!("Server running on http://127.0.0.1:8080");
