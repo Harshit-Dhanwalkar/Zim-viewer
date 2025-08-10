@@ -19,4 +19,5 @@ tempfile = "3"
 tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = "0.1.17"
 urlencoding = "2.1"
+uuid = { version = "1.17", features = ["v4"] }
 zim-rs = { path = "zim-rs" }

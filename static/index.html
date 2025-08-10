@@ -9,14 +9,54 @@
       body {
         font-family: "Inter", sans-serif;
       }
+      .spinner {
+        border-top-color: #3b82f6;
+        -webkit-animation: spin 1s linear infinite;
+        animation: spin 1s linear infinite;
+      }
+      @-webkit-keyframes spin {
+        0% {
+          -webkit-transform: rotate(0deg);
+        }
+        100% {
+          -webkit-transform: rotate(360deg);
+        }
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
     </style>
   </head>
   <body
     class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen p-4"
   >
     <div
-      class="w-full max-w-4xl bg-white shadow-xl rounded-2xl p-6 sm:p-10 transition-all duration-300"
+      class="w-full max-w-4xl bg-white shadow-xl rounded-2xl p-6 sm:p-10 transition-all duration-300 relative"
     >
+      <a
+        href="https://github.com/Harshit-Dhanwalkar/Zim-viewer"
+        target="_blank"
+        class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+      >
+        <svg
+          class="w-8 h-8"
+          fill="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M12 2C6.477 2 2 6.484 2 12.017c0 4.418 2.864 8.167 6.83 9.5.5.092.682-.217.682-.483 0-.237-.008-.888-.011-1.745-2.782.605-3.37-1.344-3.37-1.344-.454-1.157-1.11-1.465-1.11-1.465-.908-.62.069-.608.069-.608 1.004.07 1.531 1.032 1.531 1.032.892 1.53 2.342 1.088 2.91.83.091-.64.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.942 0-1.09.39-1.984 1.029-2.68-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.022.796-.22 1.635-.33 2.47-.33.834 0 1.674.11 2.47.33 1.91-1.292 2.75-1.022 2.75-1.022.546 1.378.202 2.397.098 2.65.64.696 1.029 1.59 1.029 2.68 0 3.841-2.339 4.686-4.568 4.935.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482C19.14 20.18 22 16.431 22 12.017 22 6.484 17.522 2 12 2z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      </a>
+
       <h1
         class="text-3xl sm:text-4xl font-extrabold text-center mb-6 text-gray-900"
       >
@@ -103,14 +143,25 @@
               stroke-linejoin="round"
             />
           </svg>
-          <span id="file-name" class="font-medium text-gray-700"></span>
+          <div>
+            <span id="file-name" class="font-medium text-gray-700 block"></span>
+            <span id="file-metadata" class="text-xs text-gray-500"></span>
+          </div>
         </div>
-        <button
-          id="remove-file-btn"
-          class="text-red-500 hover:text-red-700 font-semibold text-sm transition-colors duration-200"
-        >
-          Remove
-        </button>
+        <div class="flex items-center space-x-2">
+          <button
+            id="remove-file-btn"
+            class="text-red-500 hover:text-red-700 font-semibold text-sm transition-colors duration-200"
+          >
+            Remove
+          </button>
+          <button
+            id="clean-cache-btn"
+            class="text-gray-500 hover:text-gray-700 font-semibold text-sm transition-colors duration-200"
+          >
+            Clean Cache
+          </button>
+        </div>
       </div>
 
       <div id="status" class="mt-8"></div>
@@ -129,18 +180,23 @@
         </div>
       </div>
 
-      <form id="search-form" class="mt-8 hidden">
-        <label
-          for="search-query"
-          class="block text-sm font-medium text-gray-700 mb-2"
-          >Search articles</label
-        >
-        <div class="flex space-x-2">
+      <div id="search-container" class="mt-8 hidden">
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="text-xl font-semibold">ZIM Content</h2>
+          <button
+            id="browse-btn"
+            type="button"
+            class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+          >
+            Browse All Articles
+          </button>
+        </div>
+        <form id="search-form" class="flex space-x-2">
           <input
             type="text"
             id="search-query"
             name="query"
-            placeholder="e.g., 'solar system'"
+            placeholder="Search articles..."
             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           />
           <button
@@ -149,8 +205,8 @@
           >
             Search
           </button>
-        </div>
-      </form>
+        </form>
+      </div>
 
       <div
         id="content-display"
@@ -161,6 +217,13 @@
         id="search-results-display"
         class="mt-8 p-6 bg-white border border-gray-200 rounded-xl shadow-inner overflow-y-auto max-h-[60vh] hidden"
       ></div>
+
+      <div id="loading-spinner" class="mt-8 text-center hidden">
+        <div
+          class="spinner inline-block w-8 h-8 border-4 border-gray-200 rounded-full"
+        ></div>
+        <p class="text-gray-500 mt-2">Loading...</p>
+      </div>
     </div>
 
     <script>
@@ -174,41 +237,59 @@
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
       }
 
+      function showLoadingSpinner(show) {
+        const spinner = document.getElementById("loading-spinner");
+        if (show) {
+          spinner.classList.remove("hidden");
+        } else {
+          spinner.classList.add("hidden");
+        }
+      }
+
+      function hideAllContent() {
+        document.getElementById("content-display").classList.add("hidden");
+        document
+          .getElementById("search-results-display")
+          .classList.add("hidden");
+        document.getElementById("status").innerHTML = "";
+      }
+
       document.addEventListener("DOMContentLoaded", () => {
         const form = document.getElementById("upload-form");
         const fileInput = document.getElementById("file-upload");
         const fileInfo = document.getElementById("file-info");
         const fileNameSpan = document.getElementById("file-name");
+        const fileMetadataSpan = document.getElementById("file-metadata");
         const removeFileBtn = document.getElementById("remove-file-btn");
+        const cleanCacheBtn = document.getElementById("clean-cache-btn");
         const statusDiv = document.getElementById("status");
         const progressContainer = document.getElementById("progress-container");
         const progressBar = document.getElementById("progress-bar");
         const progressText = document.getElementById("progress-text");
         const contentDisplay = document.getElementById("content-display");
+        const searchContainer = document.getElementById("search-container");
         const searchForm = document.getElementById("search-form");
         const searchQueryInput = document.getElementById("search-query");
         const searchResultsDisplay = document.getElementById(
           "search-results-display",
         );
+        const browseBtn = document.getElementById("browse-btn");
 
         fileInput.addEventListener("change", async (e) => {
           const file = e.target.files[0];
           if (!file) return;
 
           fileNameSpan.textContent = file.name;
+          fileMetadataSpan.textContent = `File size: ${formatBytes(file.size)}`;
           fileInfo.classList.remove("hidden");
           form.classList.add("hidden");
-          statusDiv.innerHTML = "";
-          contentDisplay.classList.add("hidden");
-          searchForm.classList.add("hidden");
-          searchResultsDisplay.classList.add("hidden");
+          hideAllContent();
+          searchContainer.classList.add("hidden");
 
-          // Show progress bar
           progressContainer.classList.remove("hidden");
           progressBar.style.width = "0%";
           progressText.textContent = "0 MB processed";
 
-          // Connect to SSE for progress
           const source = new EventSource("/progress");
           source.onmessage = (event) => {
             const data = JSON.parse(event.data);
@@ -234,15 +315,18 @@
             source.close();
 
             if (response.ok) {
-              currentFilePath = result.file_path; // Save the file path
-              contentDisplay.innerHTML = result.content;
-              contentDisplay.classList.remove("hidden");
+              currentFilePath = result.file_metadata.persisted_file_path;
+              fileMetadataSpan.textContent += ` | Articles: ${result.file_metadata.article_count}`;
+
               progressContainer.classList.add("hidden");
-              searchForm.classList.remove("hidden"); // Show search form
+              searchContainer.classList.remove("hidden");
               progressBar.style.width = "100%";
               progressBar.textContent = "100%";
+
+              // Automatically trigger a browse to show the content
+              browseBtn.click();
             } else {
-              statusDiv.innerHTML = `<div class="p-4 bg-red-100 text-red-700 rounded-xl font-medium">${result.error || "Unknown error"}</div>`;
+              statusDiv.innerHTML = `<div class="p-4 bg-red-100 text-red-700 rounded-xl font-medium">${result.message || "Unknown error"}</div>`;
             }
           } catch (e) {
             source.close();
@@ -255,12 +339,43 @@
           fileInput.value = null;
           form.classList.remove("hidden");
           fileInfo.classList.add("hidden");
-          contentDisplay.classList.add("hidden");
+          hideAllContent();
           progressContainer.classList.add("hidden");
-          searchForm.classList.add("hidden");
-          searchResultsDisplay.classList.add("hidden");
-          statusDiv.innerHTML = "";
+          searchContainer.classList.add("hidden");
           currentFilePath = null;
+        });
+
+        cleanCacheBtn.addEventListener("click", async (e) => {
+          e.preventDefault();
+          if (
+            !confirm(
+              "Are you sure you want to clean the cache and remove all uploaded files?",
+            )
+          ) {
+            return;
+          }
+
+          showLoadingSpinner(true);
+          try {
+            const response = await fetch("/clean_cache", { method: "POST" });
+            if (response.ok) {
+              alert("Cache cleaned successfully.");
+              // Reset the UI after successful deletion
+              fileInput.value = null;
+              form.classList.remove("hidden");
+              fileInfo.classList.add("hidden");
+              hideAllContent();
+              searchContainer.classList.add("hidden");
+              currentFilePath = null;
+            } else {
+              const errorText = await response.text();
+              alert(`Failed to clean cache: ${errorText}`);
+            }
+          } catch (e) {
+            alert(`Error: ${e.message}`);
+          } finally {
+            showLoadingSpinner(false);
+          }
         });
 
         searchForm.addEventListener("submit", async (e) => {
@@ -268,10 +383,9 @@
           const query = searchQueryInput.value.trim();
           if (!query || !currentFilePath) return;
 
-          // Clear previous results and show loading indicator
-          searchResultsDisplay.innerHTML = `<p class="text-center text-gray-500">Searching...</p>`;
+          hideAllContent();
           searchResultsDisplay.classList.remove("hidden");
-          contentDisplay.classList.add("hidden");
+          showLoadingSpinner(true);
 
           try {
             const response = await fetch("/search", {
@@ -283,6 +397,8 @@
               }),
             });
 
+            showLoadingSpinner(false);
+
             if (response.ok) {
               const results = await response.json();
               if (results.length > 0) {
@@ -292,14 +408,55 @@
                       `<li class="border-b last:border-b-0 py-2"><a href="/article/${encodeURIComponent(article.title)}" class="text-blue-500 hover:underline">${article.title}</a></li>`,
                   )
                   .join("");
-                searchResultsDisplay.innerHTML = `<h2 class="text-xl font-semibold mb-4">Search Results</h2><ul class="list-inside list-disc">${resultsHtml}</ul>`;
+                searchResultsDisplay.innerHTML = `<h2 class="text-xl font-semibold mb-4">Search Results (${results.length} found)</h2><ul class="list-inside list-disc">${resultsHtml}</ul>`;
               } else {
                 searchResultsDisplay.innerHTML = `<p class="text-center text-gray-500">No results found for "${query}".</p>`;
               }
             } else {
-              searchResultsDisplay.innerHTML = `<p class="text-center text-red-500">Error during search.</p>`;
+              const errorText = await response.text();
+              searchResultsDisplay.innerHTML = `<p class="text-center text-red-500">Error during search: ${errorText}</p>`;
             }
           } catch (e) {
+            showLoadingSpinner(false);
+            searchResultsDisplay.innerHTML = `<p class="text-center text-red-500">Error: ${e.message}</p>`;
+          }
+        });
+
+        browseBtn.addEventListener("click", async () => {
+          if (!currentFilePath) return;
+
+          hideAllContent();
+          searchResultsDisplay.classList.remove("hidden");
+          showLoadingSpinner(true);
+
+          try {
+            const response = await fetch("/browse", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ file_path: currentFilePath }),
+            });
+
+            showLoadingSpinner(false);
+
+            if (response.ok) {
+              const results = await response.json();
+              if (results.length > 0) {
+                const resultsHtml = results
+                  .map(
+                    (article) =>
+                      `<li class="border-b last:border-b-0 py-2"><a href="/article/${encodeURIComponent(article.title)}" class="text-blue-500 hover:underline">${article.title}</a></li>`,
+                  )
+                  .join("");
+                searchResultsDisplay.innerHTML = `<h2 class="text-xl font-semibold mb-4">Browse Articles (${results.length} found)</h2><ul class="list-inside list-disc">${resultsHtml}</ul>`;
+              } else {
+                searchResultsDisplay.innerHTML = `<p class="text-center text-gray-500">No articles found in archive.</p>`;
+              }
+            } else {
+              const errorText = await response.text();
+              searchResultsDisplay.innerHTML = `<p class="text-center text-red-500">Error during Browse: ${errorText}</p>`;
+            }
+          } catch (e) {
+            showLoadingSpinner(false);
             searchResultsDisplay.innerHTML = `<p class="text-center text-red-500">Error: ${e.message}</p>`;
           }
         });

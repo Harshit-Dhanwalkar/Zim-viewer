@@ -4,37 +4,50 @@ use actix_web::{App, HttpResponse, HttpServer, Responder, get, post, web};
 use anyhow::{Result, anyhow};
 use async_stream::stream;
 use futures_util::StreamExt;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fs::{self, File};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicU64, Ordering},
 };
 use std::time::Duration;
-use tempfile::NamedTempFile;
 use tokio::time::sleep;
-use tokio_stream::wrappers::IntervalStream;
+use uuid::Uuid;
 use zim_rs::archive::Archive;
 use zim_rs::search::{Query, Searcher};
 
 #[derive(Clone)]
 struct AppState {
     processed_bytes: Arc<AtomicU64>,
-    zim_path: Arc<Mutex<Option<String>>>,
+    uploaded_files: Arc<Mutex<HashMap<String, PathBuf>>>,
+    current_zim_path: Arc<Mutex<Option<PathBuf>>>,
 }
 
 #[derive(Serialize, Deserialize)]
 struct ZimResponse {
-    content: String,
-    file_path: String,
+    message: String,
+    file_metadata: AppMetadata,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct AppMetadata {
+    original_file_name: String,
+    persisted_file_path: PathBuf,
+    article_count: u64,
 }
 
 #[derive(Deserialize)]
 struct SearchRequest {
     query: String,
-    file_path: String,
+    file_path: PathBuf,
+}
+
+#[derive(Deserialize)]
+struct BrowseRequest {
+    file_path: PathBuf,
 }
 
 #[derive(Serialize)]
@@ -42,34 +55,37 @@ struct ArticleSummary {
     title: String,
 }
 
-fn search_zim_file(zim_file_path: &str, query: &str) -> Result<Vec<ArticleSummary>> {
+fn search_zim_file(zim_file_path: &Path, query: &str) -> Result<Vec<ArticleSummary>> {
     println!(
         "Searching ZIM file '{}' for query '{}'",
-        zim_file_path, query
+        zim_file_path.display(),
+        query
     );
-    let zim = Archive::new(zim_file_path).map_err(|_| anyhow!("failed to open archive"))?;
-    let mut searcher = Searcher::new(&zim).map_err(|_| anyhow!("failed to create searcher"))?;
+    let zim = Archive::new(zim_file_path.to_str().unwrap())
+        .map_err(|e| anyhow!("Failed to open archive: {:?}", e))?;
+    let mut searcher =
+        Searcher::new(&zim).map_err(|e| anyhow!("Failed to create searcher: {:?}", e))?;
 
-    let query_obj = Query::new(query).map_err(|_| anyhow!("invalid query"))?;
+    let query_obj = Query::new(query).map_err(|e| anyhow!("Invalid query: {:?}", e))?;
     let search = searcher
         .search(&query_obj)
-        .map_err(|_| anyhow!("search failed"))?;
+        .map_err(|e| anyhow!("Search failed: {:?}", e))?;
     let mut result_vec: Vec<_> = search
         .get_results(0, 50)
-        .map_err(|_| anyhow!("failed to get results"))?
+        .map_err(|e| anyhow!("Failed to get results: {:?}", e))?
         .into_iter()
         .collect();
 
     if result_vec.is_empty() {
         println!("No results found for '{}', trying lowercase search", query);
         let lower_query = query.to_lowercase();
-        let query_obj = Query::new(&lower_query).map_err(|_| anyhow!("invalid query"))?;
+        let query_obj = Query::new(&lower_query).map_err(|e| anyhow!("Invalid query: {:?}", e))?;
         let search = searcher
             .search(&query_obj)
-            .map_err(|_| anyhow!("search failed"))?;
+            .map_err(|e| anyhow!("Search failed: {:?}", e))?;
         result_vec = search
             .get_results(0, 50)
-            .map_err(|_| anyhow!("failed to get results"))?
+            .map_err(|e| anyhow!("Failed to get results: {:?}", e))?
             .into_iter()
             .collect();
     }
@@ -91,33 +107,24 @@ fn search_zim_file(zim_file_path: &str, query: &str) -> Result<Vec<ArticleSummar
     Ok(results)
 }
 
-fn parse_zim_file_preview(file_path: &str) -> Result<String> {
-    let zim = Archive::new(file_path).map_err(|_| anyhow!("failed to open zim file"))?;
-    let mut html = String::new();
+fn get_all_articles(file_path: &Path) -> Result<Vec<ArticleSummary>> {
+    let zim = Archive::new(file_path.to_str().unwrap())
+        .map_err(|e| anyhow!("failed to open zim file: {:?}", e))?;
     let total = zim.get_articlecount();
-
-    for idx in 0..std::cmp::min(10, total) {
+    let mut articles = Vec::new();
+    for idx in 0..total {
         if let Ok(entry) = zim.get_entry_bytitle_index(idx) {
-            let title = entry.get_title();
-            html += &format!(
-                r#"<li><a href="/article/{}" class="text-blue-500 underline">{}</a></li>"#,
-                urlencoding::encode(&title),
-                html_escape::encode_text(&title)
-            );
+            if let Ok(item) = entry.get_item(false) {
+                if let Ok(mimetype) = item.get_mimetype() {
+                    if mimetype.starts_with("text/html") {
+                        let title = entry.get_title();
+                        articles.push(ArticleSummary { title });
+                    }
+                }
+            }
         }
     }
-
-    Ok(format!(
-        r#"<!doctype html>
-<html>
-<head><meta charset="utf-8"><title>Zim Viewer</title></head>
-<body>
-<h1>Sample Articles</h1>
-<ul>{}</ul>
-</body>
-</html>"#,
-        html
-    ))
+    Ok(articles)
 }
 
 #[get("/progress")]
@@ -126,7 +133,6 @@ async fn progress(state: web::Data<AppState>) -> impl Responder {
     let s = stream! {
         loop {
             let p = processed.load(Ordering::Relaxed);
-            // SSE `data:` lines must end with a blank line
             let line = format!("data: {{\"processed_bytes\":{}}}\n\n", p);
             yield Ok::<_, actix_web::Error>(web::Bytes::from(line));
             sleep(Duration::from_millis(500)).await;
@@ -151,31 +157,33 @@ async fn article(path: web::Path<String>, state: web::Data<AppState>) -> impl Re
         Err(_) => title_enc,
     };
 
-    let guard = state.zim_path.lock().unwrap();
+    let guard = state.current_zim_path.lock().unwrap();
     let path = match &*guard {
         Some(p) => p.clone(),
         None => return HttpResponse::BadRequest().body("No ZIM loaded"),
     };
 
-    match Archive::new(&path) {
-        Ok(zim) => {
-            // try entry by title string
-            match zim.get_entry_bytitle_str(&title) {
-                Ok(entry) => {
-                    if let Ok(item) = entry.get_item(true) {
-                        if let Ok(blob) = item.get_data() {
-                            let bytes = blob.data().as_ref();
-                            let content = String::from_utf8_lossy(bytes).into_owned();
-                            return HttpResponse::Ok()
-                                .content_type("text/html; charset=utf-8")
-                                .body(content);
-                        }
+    let path_str = match path.to_str() {
+        Some(s) => s,
+        None => return HttpResponse::InternalServerError().body("Invalid ZIM file path"),
+    };
+
+    match Archive::new(path_str) {
+        Ok(zim) => match zim.get_entry_bytitle_str(&title) {
+            Ok(entry) => {
+                if let Ok(item) = entry.get_item(true) {
+                    if let Ok(blob) = item.get_data() {
+                        let bytes = blob.data().as_ref();
+                        let content = String::from_utf8_lossy(bytes).into_owned();
+                        return HttpResponse::Ok()
+                            .content_type("text/html; charset=utf-8")
+                            .body(content);
                     }
-                    HttpResponse::NotFound().body("Article found but failed to read content")
                 }
-                Err(_) => HttpResponse::NotFound().body("Article not found"),
+                HttpResponse::NotFound().body("Article found but failed to read content")
             }
-        }
+            Err(_) => HttpResponse::NotFound().body("Article not found"),
+        },
         Err(_) => HttpResponse::InternalServerError().body("Failed to open ZIM archive"),
     }
 }
@@ -185,54 +193,58 @@ async fn upload(
     mut payload: Multipart,
     state: web::Data<AppState>,
 ) -> Result<web::Json<ZimResponse>, actix_web::Error> {
-    // temporary file to save uploaded archive
+    let uploads_dir = Path::new("./uploads");
+    if !uploads_dir.exists() {
+        fs::create_dir(uploads_dir).map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+    }
+
+    let mut original_file_name: Option<String> = None;
+    let new_filename = Uuid::new_v4().to_string() + ".zim";
+    let persisted_path = uploads_dir.join(&new_filename);
+
     let mut file =
-        NamedTempFile::new().map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
-    let path_buf = file.path().to_owned();
-
-    // channel to pass chunks to processing background
-    let (tx, rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(64);
-
-    // background thread: consume channel in parallel
-    std::thread::spawn(move || {
-        rx.into_iter().par_bridge().for_each(|chunk| {
-            // TODO: CPU work
-            // e.g., parse the chunk, index, upload part, etc.
-            let _len = chunk.len();
-        });
-    });
+        File::create(&persisted_path).map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
 
     while let Some(item) = payload.next().await {
         let mut field = item?;
+        if let Some(filename) = field.content_disposition().get_filename() {
+            original_file_name = Some(filename.to_string());
+        }
         while let Some(chunk_res) = field.next().await {
             let chunk = chunk_res?;
-            // write to temp file
             file.write(&chunk)
                 .map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
             state
                 .processed_bytes
                 .fetch_add(chunk.len() as u64, Ordering::Relaxed);
-            let _ = tx.send(chunk.to_vec());
         }
     }
 
-    let persisted_path = path_buf.to_string_lossy().into_owned();
+    let original_file_name = original_file_name.unwrap_or_else(|| "unknown.zim".to_string());
 
-    // save path into state
-    {
-        let mut guard = state.zim_path.lock().unwrap();
-        *guard = Some(persisted_path.clone());
-    }
-
-    // build preview HTML
-    let preview = match parse_zim_file_preview(&persisted_path) {
-        Ok(h) => h,
-        Err(e) => format!("Uploaded, but preview failed: {}", e),
+    // metadata from the uploaded ZIM file
+    let article_count = match Archive::new(persisted_path.to_str().unwrap()) {
+        Ok(zim) => zim.get_articlecount() as u64,
+        Err(e) => {
+            eprintln!("Failed to open ZIM archive to get metadata: {:?}", e);
+            0
+        }
     };
 
+    {
+        let mut files_guard = state.uploaded_files.lock().unwrap();
+        files_guard.insert(original_file_name.clone(), persisted_path.clone());
+        let mut path_guard = state.current_zim_path.lock().unwrap();
+        *path_guard = Some(persisted_path.clone());
+    }
+
     Ok(web::Json(ZimResponse {
-        content: preview,
-        file_path: persisted_path,
+        message: "File uploaded successfully".to_string(),
+        file_metadata: AppMetadata {
+            original_file_name,
+            persisted_file_path: persisted_path,
+            article_count,
+        },
     }))
 }
 
@@ -241,7 +253,6 @@ async fn search_articles(req: web::Json<SearchRequest>) -> impl Responder {
     let file_path = req.file_path.clone();
     let query = req.query.clone();
 
-    // run blocking search in threadpool
     match web::block(move || search_zim_file(&file_path, &query)).await {
         Ok(Ok(results)) => HttpResponse::Ok().json(results),
         Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -249,12 +260,50 @@ async fn search_articles(req: web::Json<SearchRequest>) -> impl Responder {
     }
 }
 
+#[post("/browse")]
+async fn browse_articles(req: web::Json<BrowseRequest>) -> impl Responder {
+    let file_path = req.file_path.clone();
+    match web::block(move || get_all_articles(&file_path)).await {
+        Ok(Ok(articles)) => HttpResponse::Ok().json(articles),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[post("/clean_cache")]
+async fn clean_cache(state: web::Data<AppState>) -> impl Responder {
+    let uploads_dir = Path::new("./uploads");
+    if uploads_dir.exists() {
+        match fs::remove_dir_all(uploads_dir) {
+            Ok(_) => {
+                // Clear the state after deleting the directory
+                let mut files_guard = state.uploaded_files.lock().unwrap();
+                files_guard.clear();
+                let mut path_guard = state.current_zim_path.lock().unwrap();
+                *path_guard = None;
+                HttpResponse::Ok().body("Cache cleaned successfully")
+            }
+            Err(e) => {
+                HttpResponse::InternalServerError().body(format!("Failed to clean cache: {}", e))
+            }
+        }
+    } else {
+        HttpResponse::Ok().body("Cache directory not found, nothing to clean")
+    }
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // initial state
+    // Ensure the uploads directory exists on startup
+    let uploads_dir = Path::new("./uploads");
+    if !uploads_dir.exists() {
+        fs::create_dir(uploads_dir)?;
+    }
+
     let state = AppState {
         processed_bytes: Arc::new(AtomicU64::new(0)),
-        zim_path: Arc::new(Mutex::new(None)),
+        uploaded_files: Arc::new(Mutex::new(HashMap::new())),
+        current_zim_path: Arc::new(Mutex::new(None)),
     };
 
     println!("Server running on http://127.0.0.1:8080");
@@ -267,7 +316,9 @@ async fn main() -> std::io::Result<()> {
             .service(upload)
             .service(article)
             .service(search_articles)
-            .service(actix_files::Files::new("/static", "./static").index_file("index.html"))
+            .service(browse_articles)
+            .service(clean_cache)
+            .service(actix_files::Files::new("/", "./static").index_file("index.html"))
     })
     .bind(("127.0.0.1", 8080))?
     .run()
