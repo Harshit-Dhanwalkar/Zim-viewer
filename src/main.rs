@@ -193,6 +193,7 @@ async fn upload(
     mut payload: Multipart,
     state: web::Data<AppState>,
 ) -> Result<web::Json<ZimResponse>, actix_web::Error> {
+    state.processed_bytes.store(0, Ordering::Relaxed);
     let uploads_dir = Path::new("./uploads");
     if !uploads_dir.exists() {
         fs::create_dir(uploads_dir).map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
