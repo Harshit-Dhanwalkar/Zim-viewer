@@ -31,7 +31,6 @@
         }
       }
 
-      /*  FIX: Artilces uses default stylings from zim file itself so these custom styling is not applied*/
       /* styling for articles */
       .mediawiki {
         font-family: sans-serif;
@@ -296,13 +295,6 @@
       <div id="search-container" class="mt-8 hidden">
         <div class="flex justify-between items-center mb-2">
           <h2 class="text-xl font-semibold">ZIM Content</h2>
-          <button
-            id="browse-btn"
-            type="button"
-            class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-          >
-            Browse All Articles
-          </button>
         </div>
         <form id="search-form" class="flex space-x-2">
           <input
@@ -606,7 +598,30 @@
           }
           const content = await response.text();
           const styledContent = applyWikipediaStyling(content);
-          articleContentDiv.innerHTML = styledContent;
+          const buttonContainer = document.createElement("div");
+          buttonContainer.className = "flex items-center space-x-4 mb-4";
+
+          const backButton = document.createElement("button");
+          backButton.textContent = "Back to Results";
+          backButton.className =
+            "inline-flex items-center rounded-md border border-blue-300 bg-white px-4 py-2 text-sm font-medium text-blue-500 shadow-sm hover:bg-gray-50 hover:text-blue-700 hover:border-blue-500 transition-colors duration-200";
+          backButton.onclick = () => {
+            articleContentDiv.classList.add("hidden");
+            document
+              .getElementById("search-results-display")
+              .classList.remove("hidden");
+            articleContentDiv.innerHTML = ""; // Clear content for next use
+          };
+
+          buttonContainer.appendChild(backButton);
+          articleContentDiv.innerHTML = "";
+          articleContentDiv.appendChild(buttonContainer);
+          articleContentDiv.innerHTML += styledContent;
+
+          // Ensure the search-container with the correct 'Browse All Articles' button is visible
+          document
+            .getElementById("search-container")
+            .classList.remove("hidden");
         } catch (error) {
           articleContentDiv.innerHTML = `Error loading article: ${error.message}`;
         } finally {
