@@ -3,12 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rust ZIM Viewer</title>
+    <title>Rust ZIM Viewer - Upload</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      body {
-        font-family: "Inter", sans-serif;
-      }
       .spinner {
         border-top-color: #3b82f6;
         -webkit-animation: spin 1s linear infinite;
@@ -30,118 +27,6 @@
           transform: rotate(360deg);
         }
       }
-
-      /* styling for articles */
-      .mediawiki {
-        font-family: sans-serif;
-        line-height: 1.6;
-        color: #202122;
-        background-color: #f8f9fa;
-      }
-
-      .mw-body {
-        max-width: 800px;
-        margin: auto;
-        padding: 1em;
-        background-color: #fff;
-        border: 1px solid #a2a9b1;
-        border-radius: 8px;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-      }
-
-      .mw-page-title-main {
-        font-size: 2em;
-        font-weight: normal;
-        margin-bottom: 0.3em;
-        padding-bottom: 0.3em;
-        border-bottom: 1px solid #a2a9b1;
-      }
-
-      h2 .mw-headline {
-        font-size: 1.5em;
-        font-weight: normal;
-        border-bottom: 1px solid #a2a9b1;
-        padding-bottom: 0.17em;
-        margin: 1em 0 0.5em;
-      }
-
-      h3 .mw-headline {
-        font-size: 1.2em;
-        font-weight: bold;
-        margin: 1em 0 0.5em;
-      }
-
-      p {
-        margin: 1em 0;
-      }
-
-      a {
-        color: #36c;
-        text-decoration: none;
-      }
-
-      a:hover {
-        text-decoration: underline;
-      }
-
-      img {
-        max-width: 100%;
-        height: auto;
-        border: 1px solid #ccc;
-        background-color: #f9f9f9;
-        padding: 3px;
-        box-sizing: border-box;
-      }
-
-      .thumb {
-        border: 1px solid #a2a9b1;
-        background-color: #f9f9f9;
-        padding: 0.2em;
-        overflow: hidden;
-        margin-bottom: 0.5em;
-      }
-
-      .tright {
-        clear: right;
-        float: right;
-        margin: 0.5em 0 0.8em 1.4em;
-      }
-
-      .thumbinner {
-        text-align: center;
-        overflow: hidden;
-      }
-
-      .thumbcaption {
-        font-size: 94%;
-        padding: 3px;
-      }
-
-      .mw-highlight {
-        background-color: #f8f9fa;
-        border: 1px dashed #a2a9b1;
-        padding: 0.5em;
-        overflow: auto;
-        margin: 1em 0;
-      }
-
-      pre {
-        margin: 0;
-      }
-
-      .reflist {
-        font-size: 90%;
-        margin-bottom: 0.5em;
-        list-style-type: decimal;
-      }
-
-      details {
-        margin: 1em 0;
-      }
-
-      details > summary {
-        cursor: pointer;
-      }
     </style>
   </head>
   <body
@@ -150,32 +35,13 @@
     <div
       class="w-full max-w-4xl bg-white shadow-xl rounded-2xl p-6 sm:p-10 transition-all duration-300 relative"
     >
-      <a
-        href="https://github.com/Harshit-Dhanwalkar/Zim-viewer"
-        target="_blank"
-        class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200"
-      >
-        <svg
-          class="w-8 h-8"
-          fill="currentColor"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path
-            fill-rule="evenodd"
-            d="M12 2C6.477 2 2 6.484 2 12.017c0 4.418 2.864 8.167 6.83 9.5.5.092.682-.217.682-.483 0-.237-.008-.888-.011-1.745-2.782.605-3.37-1.344-3.37-1.344-.454-1.157-1.11-1.465-1.11-1.465-.908-.62.069-.608.069-.608 1.004.07 1.531 1.032 1.531 1.032.892 1.53 2.342 1.088 2.91.83.091-.64.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.942 0-1.09.39-1.984 1.029-2.68-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.022.796-.22 1.635-.33 2.47-.33.834 0 1.674.11 2.47.33 1.91-1.292 2.75-1.022 2.75-1.022.546 1.378.202 2.397.098 2.65.64.696 1.029 1.59 1.029 2.68 0 3.841-2.339 4.686-4.568 4.935.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482C19.14 20.18 22 16.431 22 12.017 22 6.484 17.522 2 12 2z"
-            clip-rule="evenodd"
-          />
-        </svg>
-      </a>
-
       <h1
         class="text-3xl sm:text-4xl font-extrabold text-center mb-6 text-gray-900"
       >
         Rust ZIM Viewer
       </h1>
       <p class="text-center text-gray-600 mb-8">
-        Upload a `.zim` file to view its simulated contents.
+        Upload a `.zim` file to view its contents
       </p>
 
       <form
@@ -260,20 +126,12 @@
             <span id="file-metadata" class="text-xs text-gray-500"></span>
           </div>
         </div>
-        <div class="flex items-center space-x-2">
-          <button
-            id="remove-file-btn"
-            class="rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors duration-200"
-          >
-            Remove
-          </button>
-          <button
-            id="clean-cache-btn"
-            class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors duration-200"
-          >
-            Clean Cache
-          </button>
-        </div>
+        <button
+          id="remove-file-btn"
+          class="rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors duration-200"
+        >
+          Remove
+        </button>
       </div>
 
       <div id="status" class="mt-8"></div>
@@ -292,62 +150,15 @@
         </div>
       </div>
 
-      <div id="search-container" class="mt-8 hidden">
-        <div class="flex justify-between items-center mb-2">
-          <h2 class="text-xl font-semibold">ZIM Content</h2>
-        </div>
-        <form id="search-form" class="flex space-x-2">
-          <input
-            type="text"
-            id="search-query"
-            name="query"
-            placeholder="Search articles..."
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-          />
-          <button
-            type="submit"
-            class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            Search
-          </button>
-          <button
-            id="browse-btn"
-            type="button"
-            class="inline-flex items-center rounded-md border border-transparent bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-          >
-            Browse
-          </button>
-        </form>
-      </div>
-
-      <div id="content-display" class="mt-8 hidden"></div>
-      <div id="gemini-summary-container" class="mt-8 hidden">
-        <h3 class="text-xl font-semibold mb-2">Article Summary ✨</h3>
-        <div
-          id="gemini-summary"
-          class="p-4 bg-blue-50 rounded-lg text-gray-800"
-        ></div>
-      </div>
-      <div id="gemini-tts-container" class="mt-8 hidden">
-        <audio id="tts-audio" controls></audio>
-      </div>
-
-      <div
-        id="search-results-display"
-        class="mt-8 p-6 bg-white border border-gray-200 rounded-xl shadow-inner overflow-y-auto max-h-[60vh] hidden"
-      ></div>
-
       <div id="loading-spinner" class="mt-8 text-center hidden">
         <div
           class="spinner inline-block w-8 h-8 border-4 border-gray-200 rounded-full"
         ></div>
-        <p class="text-gray-500 mt-2">Loading...</p>
+        <p class="text-gray-500 mt-2">Processing large file, please wait...</p>
       </div>
     </div>
 
     <script>
-      let currentFilePath = null;
-
       function formatBytes(bytes) {
         if (bytes === 0) return "0 Bytes";
         const k = 1024;
@@ -365,18 +176,6 @@
         }
       }
 
-      function hideAllContent() {
-        document.getElementById("content-display").classList.add("hidden");
-        document
-          .getElementById("gemini-summary-container")
-          .classList.add("hidden");
-        document.getElementById("gemini-tts-container").classList.add("hidden");
-        document
-          .getElementById("search-results-display")
-          .classList.add("hidden");
-        document.getElementById("status").innerHTML = "";
-      }
-
       document.addEventListener("DOMContentLoaded", () => {
         const form = document.getElementById("upload-form");
         const fileInput = document.getElementById("file-upload");
@@ -384,19 +183,10 @@
         const fileNameSpan = document.getElementById("file-name");
         const fileMetadataSpan = document.getElementById("file-metadata");
         const removeFileBtn = document.getElementById("remove-file-btn");
-        const cleanCacheBtn = document.getElementById("clean-cache-btn");
         const statusDiv = document.getElementById("status");
         const progressContainer = document.getElementById("progress-container");
         const progressBar = document.getElementById("progress-bar");
         const progressText = document.getElementById("progress-text");
-        const contentDisplay = document.getElementById("content-display");
-        const searchContainer = document.getElementById("search-container");
-        const searchForm = document.getElementById("search-form");
-        const searchQueryInput = document.getElementById("search-query");
-        const searchResultsDisplay = document.getElementById(
-          "search-results-display",
-        );
-        const browseBtn = document.getElementById("browse-btn");
 
         fileInput.addEventListener("change", async (e) => {
           const file = e.target.files[0];
@@ -406,11 +196,10 @@
           fileMetadataSpan.textContent = `File size: ${formatBytes(file.size)}`;
           fileInfo.classList.remove("hidden");
           form.classList.add("hidden");
-          hideAllContent();
-          searchContainer.classList.add("hidden");
           progressContainer.classList.remove("hidden");
           progressBar.style.width = "0%";
           progressText.textContent = "0 MB processed";
+          showLoadingSpinner(true);
 
           const source = new EventSource("/progress");
           source.onmessage = (event) => {
@@ -437,22 +226,16 @@
             source.close();
 
             if (response.ok) {
-              currentFilePath = result.file_metadata.persisted_file_path;
-              fileMetadataSpan.textContent += ` | Articles: ${result.file_metadata.article_count}`;
-
-              progressContainer.classList.add("hidden");
-              searchContainer.classList.remove("hidden");
-              progressBar.style.width = "100%";
-              progressBar.textContent = "100%";
-
-              // Automatically trigger a browse to show the content
-              browseBtn.click();
+              // Redirect to viewer page after successful upload
+              window.location.href = "/viewer.html";
             } else {
               statusDiv.innerHTML = `<div class="p-4 bg-red-100 text-red-700 rounded-xl font-medium">${result.message || "Unknown error"}</div>`;
             }
           } catch (e) {
             source.close();
             statusDiv.innerHTML = `<div class="p-4 bg-red-100 text-red-700 rounded-xl font-medium">Error: ${e.message}</div>`;
+          } finally {
+            showLoadingSpinner(false);
           }
         });
 
@@ -461,150 +244,7 @@
           fileInput.value = null;
           form.classList.remove("hidden");
           fileInfo.classList.add("hidden");
-          hideAllContent();
           progressContainer.classList.add("hidden");
-          searchContainer.classList.add("hidden");
-          currentFilePath = null;
-        });
-
-        cleanCacheBtn.addEventListener("click", async (e) => {
-          e.preventDefault();
-          if (
-            !confirm(
-              "Are you sure you want to clean the cache and remove all uploaded files?",
-            )
-          ) {
-            return;
-          }
-
-          showLoadingSpinner(true);
-          try {
-            const response = await fetch("/clean_cache", { method: "POST" });
-            if (response.ok) {
-              alert("Cache cleaned successfully.");
-              // Reset the UI after successful deletion
-              fileInput.value = null;
-              form.classList.remove("hidden");
-              fileInfo.classList.add("hidden");
-              hideAllContent();
-              searchContainer.classList.add("hidden");
-              currentFilePath = null;
-            } else {
-              const errorText = await response.text();
-              alert(`Failed to clean cache: ${errorText}`);
-            }
-          } catch (e) {
-            alert(`Error: ${e.message}`);
-          } finally {
-            showLoadingSpinner(false);
-          }
-        });
-
-        searchForm.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const query = searchQueryInput.value.trim();
-          if (!query || !currentFilePath) return;
-
-          hideAllContent();
-          searchResultsDisplay.classList.remove("hidden");
-          showLoadingSpinner(true);
-
-          try {
-            const response = await fetch("/search", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                query: query,
-                file_path: currentFilePath,
-              }),
-            });
-
-            showLoadingSpinner(false);
-
-            if (response.ok) {
-              const results = await response.json();
-              if (results.length > 0) {
-                const resultsHtml = results
-                  .map(
-                    (article) =>
-                      `<li class="border-b last:border-b-0 py-2"><a href="/article/${encodeURIComponent(article.title)}" class="text-blue-500 hover:underline">${article.title}</a></li>`,
-                  )
-                  .join("");
-                searchResultsDisplay.innerHTML = `<h2 class="text-xl font-semibold mb-4">Search Results (${results.length} found)</h2><ul class="list-inside list-disc">${resultsHtml}</ul>`;
-              } else {
-                searchResultsDisplay.innerHTML = `<p class="text-center text-gray-500">No results found for "${query}".</p>`;
-              }
-            } else {
-              const errorText = await response.text();
-              searchResultsDisplay.innerHTML = `<p class="text-center text-red-500">Error during search: ${errorText}</p>`;
-            }
-          } catch (e) {
-            showLoadingSpinner(false);
-            searchResultsDisplay.innerHTML = `<p class="text-center text-red-500">Error: ${e.message}</p>`;
-          }
-        });
-
-        browseBtn.addEventListener("click", async () => {
-          if (!currentFilePath) return;
-
-          hideAllContent();
-          searchResultsDisplay.classList.remove("hidden");
-          showLoadingSpinner(true);
-
-          try {
-            const response = await fetch("/browse", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ file_path: currentFilePath }),
-            });
-
-            showLoadingSpinner(false);
-
-            if (response.ok) {
-              const results = await response.json();
-              if (results.length > 0) {
-                const resultsHtml = results
-                  .map(
-                    (article) =>
-                      `<li class="border-b last:border-b-0 py-2"><a href="/article/${encodeURIComponent(article.title)}" class="text-blue-500 hover:underline">${article.title}</a></li>`,
-                  )
-                  .join("");
-                searchResultsDisplay.innerHTML = `<h2 class="text-xl font-semibold mb-4">Browse Articles (${results.length} found)</h2><ul class="list-inside list-disc">${resultsHtml}</ul>`;
-              } else {
-                searchResultsDisplay.innerHTML = `<p class="text-center text-gray-500">No articles found in archive.</p>`;
-              }
-            } else {
-              const errorText = await response.text();
-              searchResultsDisplay.innerHTML = `<p class="text-center text-red-500">Error during Browse: ${errorText}</p>`;
-            }
-          } catch (e) {
-            showLoadingSpinner(false);
-            searchResultsDisplay.innerHTML = `<p class="text-center text-red-500">Error: ${e.message}</p>`;
-          }
-        });
-
-        // Event listener for article links
-        searchResultsDisplay.addEventListener("click", (e) => {
-          if (e.target.tagName === "A") {
-            e.preventDefault();
-            const url = new URL(e.target.href);
-            const title = decodeURIComponent(url.pathname.split("/").pop());
-            fetchArticle(title);
-          }
-        });
-
-        contentDisplay.addEventListener("click", (e) => {
-          const targetLink = e.target.closest("a");
-          if (targetLink) {
-            const url = new URL(targetLink.href, window.location.origin);
-            const pathSegments = url.pathname.split("/");
-
-            if (pathSegments.length > 2 && pathSegments[1] === "article") {
-              e.preventDefault(); // Prevent default navigation
-              const title = decodeURIComponent(pathSegments.pop());
-              fetchArticle(title);
-            }
-          }
         });
 
         form.addEventListener("dragover", (e) => e.preventDefault());
@@ -616,322 +256,6 @@
           }
         });
       });
-
-      async function fetchArticle(title) {
-        const articleContentDiv = document.getElementById("content-display");
-        const summaryContainer = document.getElementById(
-          "gemini-summary-container",
-        );
-        const ttsContainer = document.getElementById("gemini-tts-container");
-        const searchResultsDisplay = document.getElementById(
-          "search-results-display",
-        );
-
-        articleContentDiv.innerHTML = "Loading article...";
-        summaryContainer.classList.add("hidden");
-        ttsContainer.classList.add("hidden");
-        searchResultsDisplay.classList.add("hidden");
-        articleContentDiv.classList.remove("hidden");
-        showLoadingSpinner(true);
-
-        try {
-          const response = await fetch(`/article/${encodeURIComponent(title)}`);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch article: ${response.statusText}`);
-          }
-          const content = await response.text();
-          const styledContent = applyWikipediaStyling(content);
-
-          const buttonContainer = document.createElement("div");
-          buttonContainer.className =
-            "flex flex-wrap items-center space-x-2 sm:space-x-4 mb-4";
-
-          // Back Button
-          const backButton = document.createElement("button");
-          backButton.textContent = "Back to Results";
-          backButton.className =
-            "inline-flex items-center rounded-md border border-blue-300 bg-white px-4 py-2 text-sm font-medium text-blue-500 shadow-sm hover:bg-gray-50 hover:text-blue-700 hover:border-blue-500 transition-colors duration-200 mt-2 sm:mt-0";
-          backButton.onclick = () => {
-            articleContentDiv.classList.add("hidden");
-            searchResultsDisplay.classList.remove("hidden");
-            summaryContainer.classList.add("hidden");
-            ttsContainer.classList.add("hidden");
-            articleContentDiv.innerHTML = "";
-          };
-          buttonContainer.appendChild(backButton);
-
-          // Summarize Button
-          const summarizeButton = document.createElement("button");
-          summarizeButton.textContent = "Summarize Article ✨ (Coming soon)";
-          summarizeButton.className =
-            "inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors duration-200 mt-2 sm:mt-0";
-          summarizeButton.onclick = () => summarizeArticle(content);
-          buttonContainer.appendChild(summarizeButton);
-
-          // Read Aloud Button
-          const ttsButton = document.createElement("button");
-          ttsButton.textContent = "Read Aloud 🗣️ (Coming soon)";
-          ttsButton.className =
-            "inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors duration-200 mt-2 sm:mt-0";
-          ttsButton.onclick = () => readArticleAloud(content);
-          buttonContainer.appendChild(ttsButton);
-
-          articleContentDiv.innerHTML = "";
-          articleContentDiv.appendChild(buttonContainer);
-          articleContentDiv.innerHTML += styledContent;
-
-          document
-            .getElementById("search-container")
-            .classList.remove("hidden");
-        } catch (error) {
-          articleContentDiv.innerHTML = `Error loading article: ${error.message}`;
-        } finally {
-          showLoadingSpinner(false);
-        }
-      }
-
-      // Gemini LLM Text Generation for Summary
-      async function summarizeArticle(content) {
-        const summaryDiv = document.getElementById("gemini-summary");
-        const summaryContainer = document.getElementById(
-          "gemini-summary-container",
-        );
-        summaryContainer.classList.remove("hidden");
-        summaryDiv.innerHTML = `<div class="flex items-center space-x-2"><div class="spinner w-5 h-5"></div><p>Generating summary...</p></div>`;
-
-        try {
-          const prompt = `Summarize the following article in a clear and concise manner, with a maximum of 3 sentences. Do not use bullet points or lists, only plain text. Article: "${content.substring(0, 5000)}"`;
-
-          let chatHistory = [];
-          chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-          const payload = { contents: chatHistory };
-          const apiKey = "";
-          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-          const response = await fetch(apiUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-
-          if (!response.ok) {
-            throw new Error(`API call failed with status: ${response.status}`);
-          }
-
-          const result = await response.json();
-          const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-          if (text) {
-            summaryDiv.innerHTML = `<p>${text}</p>`;
-          } else {
-            summaryDiv.innerHTML = `<p class="text-red-500">Error: Could not retrieve summary.</p>`;
-          }
-        } catch (e) {
-          console.error("Error generating summary:", e);
-          summaryDiv.innerHTML = `<p class="text-red-500">Error generating summary: ${e.message}</p>`;
-        }
-      }
-
-      // Gemini TTS Audio generation
-      async function readArticleAloud(content) {
-        const ttsAudio = document.getElementById("tts-audio");
-        const ttsContainer = document.getElementById("gemini-tts-container");
-
-        ttsContainer.classList.remove("hidden");
-        ttsAudio.src = ""; // Clear previous audio
-        ttsAudio.pause();
-
-        try {
-          const prompt = `Say in a clear and informative tone: ${content.substring(0, 1000)}`;
-
-          const base64ToArrayBuffer = (base64) => {
-            const binaryString = atob(base64);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-          };
-
-          const pcmToWav = (pcm, sampleRate = 16000) => {
-            const numChannels = 1;
-            const sampleBits = 16;
-            const byteRate = (sampleRate * numChannels * sampleBits) / 8;
-            const blockAlign = (numChannels * sampleBits) / 8;
-
-            const buffer = new ArrayBuffer(44 + pcm.length * 2);
-            const view = new DataView(buffer);
-
-            // RIFF chunk descriptor
-            writeString(view, 0, "RIFF");
-            view.setUint32(4, 36 + pcm.length * 2, true);
-            writeString(view, 8, "WAVE");
-
-            // FMT sub-chunk
-            writeString(view, 12, "fmt ");
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true); // AudioFormat: 1 for PCM
-            view.setUint16(22, numChannels, true);
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, byteRate, true);
-            view.setUint16(32, blockAlign, true);
-            view.setUint16(34, sampleBits, true);
-
-            // Data sub-chunk
-            writeString(view, 36, "data");
-            view.setUint32(40, pcm.length * 2, true);
-
-            let offset = 44;
-            for (let i = 0; i < pcm.length; i++, offset += 2) {
-              view.setInt16(offset, pcm[i], true);
-            }
-
-            return new Blob([view], { type: "audio/wav" });
-          };
-
-          const writeString = (view, offset, string) => {
-            for (let i = 0; i < string.length; i++) {
-              view.setUint8(offset + i, string.charCodeAt(i));
-            }
-          };
-
-          const payload = {
-            contents: [
-              {
-                parts: [{ text: prompt }],
-              },
-            ],
-            generationConfig: {
-              responseModalities: ["AUDIO"],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: "Puck" },
-                },
-              },
-            },
-            model: "gemini-2.5-flash-preview-tts",
-          };
-          const apiKey = "";
-          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
-
-          const response = await fetch(apiUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-
-          if (!response.ok) {
-            throw new Error(
-              `TTS API call failed with status: ${response.status}`,
-            );
-          }
-
-          const result = await response.json();
-          const part = result?.candidates?.[0]?.content?.parts?.[0];
-          const audioData = part?.inlineData?.data;
-          const mimeType = part?.inlineData?.mimeType;
-
-          if (audioData && mimeType && mimeType.startsWith("audio/")) {
-            const sampleRateMatch = mimeType.match(/rate=(\d+)/);
-            const sampleRate = sampleRateMatch
-              ? parseInt(sampleRateMatch[1], 10)
-              : 16000;
-            const pcmData = base64ToArrayBuffer(audioData);
-            const pcm16 = new Int16Array(pcmData);
-            const wavBlob = pcmToWav(pcm16, sampleRate);
-            const audioUrl = URL.createObjectURL(wavBlob);
-            ttsAudio.src = audioUrl;
-            ttsAudio.play();
-          } else {
-            throw new Error(
-              "TTS response missing audio data or invalid mime type.",
-            );
-          }
-        } catch (e) {
-          console.error("Error generating TTS:", e);
-          const errorMsgDiv = document.createElement("div");
-          errorMsgDiv.className = "p-4 bg-red-100 text-red-700 rounded-lg mt-4";
-          errorMsgDiv.textContent = `Error reading article aloud: ${e.message}`;
-          ttsContainer.appendChild(errorMsgDiv);
-        }
-      }
-
-      function applyWikipediaStyling(htmlContent) {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlContent, "text/html");
-        const body = doc.body;
-        const customStyle = document.createElement("style");
-        customStyle.innerHTML = `
-          .mediawiki h1, .mediawiki h2, .mediawiki h3 {
-            font-family: sans-serif !important;
-            color: #333333 !important;
-            border-bottom: 1px solid #a2a9b1 !important;
-          }
-          .mediawiki p {
-            font-family: sans-serif !important;
-            line-height: 1.6 !important;
-            color: #202122 !important;
-          }
-          .mediawiki a {
-            color: #36c !important;
-            text-decoration: none !important;
-          }
-          .mediawiki a:hover {
-            text-decoration: underline !important;
-          }
-        `;
-        doc.head.appendChild(customStyle);
-
-        const mainContainer = document.createElement("div");
-        mainContainer.classList.add(
-          "mediawiki",
-          "mw-hide-empty-elt",
-          "ns-0",
-          "ns-subject",
-          "stable",
-          "skin-minerva",
-          "action-view",
-          "animations",
-        );
-
-        const viewportDiv = document.createElement("div");
-        viewportDiv.id = "mw-mf-viewport";
-        viewportDiv.className = "feature-header-v2";
-
-        const pageCenterDiv = document.createElement("div");
-        pageCenterDiv.id = "mw-mf-page-center";
-
-        const contentDiv = document.createElement("div");
-        contentDiv.id = "content";
-        contentDiv.className = "mw-body";
-
-        const bodyContentDiv = document.createElement("div");
-        bodyContentDiv.id = "bodyContent";
-        bodyContentDiv.className = "content mw-parser-output";
-
-        while (body.firstChild) {
-          bodyContentDiv.appendChild(body.firstChild);
-        }
-
-        contentDiv.appendChild(bodyContentDiv);
-        pageCenterDiv.appendChild(contentDiv);
-        viewportDiv.appendChild(pageCenterDiv);
-        mainContainer.appendChild(viewportDiv);
-
-        mainContainer
-          .querySelectorAll("h1.section-heading .mw-headline")
-          .forEach((h1) => h1.classList.add("mw-page-title-main"));
-        mainContainer
-          .querySelectorAll("h2.section-heading .mw-headline")
-          .forEach((h2) => h2.classList.add("mw-headline"));
-        mainContainer
-          .querySelectorAll("h3.section-heading .mw-headline")
-          .forEach((h3) => h3.classList.add("mw-headline"));
-
-        const newBody = document.createElement("div");
-        newBody.appendChild(mainContainer);
-        return newBody.innerHTML;
-      }
     </script>
   </body>
 </html>

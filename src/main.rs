@@ -6,6 +6,7 @@ use async_stream::stream;
 use futures_util::StreamExt;
 use hex;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -294,6 +295,40 @@ async fn upload(
     }))
 }
 
+#[get("/current_file")]
+async fn get_current_file(state: web::Data<AppState>) -> impl Responder {
+    let files_guard = state.uploaded_files.lock().unwrap();
+    let path_guard = state.current_zim_path.lock().unwrap();
+
+    if let Some(path) = &*path_guard {
+        let file_name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string();
+        let file_size = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+
+        let article_count = match Archive::new(path.to_str().unwrap()) {
+            Ok(zim) => zim.get_articlecount() as u64,
+            Err(_) => 0,
+        };
+
+        HttpResponse::Ok().json(json!({
+            "file_path": path.to_str().unwrap(),
+            "file_name": file_name,
+            "file_size": file_size,
+            "article_count": article_count
+        }))
+    } else {
+        HttpResponse::NotFound().json(json!({"error": "No ZIM file loaded"}))
+    }
+}
+
+#[get("/viewer")]
+async fn viewer() -> actix_web::Result<NamedFile> {
+    Ok(NamedFile::open("./static/viewer.html")?)
+}
+
 #[post("/search")]
 async fn search_articles(req: web::Json<SearchRequest>) -> impl Responder {
     let file_path = req.file_path.clone();
@@ -376,6 +411,8 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(state.clone()))
             .service(index)
+            .service(viewer)
+            .service(get_current_file)
             .service(progress)
             .service(upload)
             .service(article)

@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rust ZIM Viewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      .spinner {
+        border-top-color: #3b82f6;
+        -webkit-animation: spin 1s linear infinite;
+        animation: spin 1s linear infinite;
+      }
+      @-webkit-keyframes spin {
+        0% {
+          -webkit-transform: rotate(0deg);
+        }
+        100% {
+          -webkit-transform: rotate(360deg);
+        }
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Wikipedia article styling */
+      .mediawiki {
+        font-family: sans-serif;
+        line-height: 1.6;
+        color: #202122;
+        background-color: #f8f9fa;
+      }
+      .mw-body {
+        max-width: 800px;
+        margin: auto;
+        padding: 1em;
+        background-color: #fff;
+        border: 1px solid #a2a9b1;
+        border-radius: 8px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      }
+      .mw-page-title-main {
+        font-size: 2em;
+        font-weight: normal;
+        margin-bottom: 0.3em;
+        padding-bottom: 0.3em;
+        border-bottom: 1px solid #a2a9b1;
+      }
+      h2 .mw-headline {
+        font-size: 1.5em;
+        font-weight: normal;
+        border-bottom: 1px solid #a2a9b1;
+        padding-bottom: 0.17em;
+        margin: 1em 0 0.5em;
+      }
+      h3 .mw-headline {
+        font-size: 1.2em;
+        font-weight: bold;
+        margin: 1em 0 0.5em;
+      }
+      p {
+        margin: 1em 0;
+      }
+      a {
+        color: #36c;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-800 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+      <header class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">ZIM Viewer</h1>
+        <button
+          id="upload-new-btn"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+        >
+          Upload New ZIM
+        </button>
+      </header>
+
+      <div id="search-container" class="mb-8">
+        <form id="search-form" class="flex gap-2">
+          <input
+            type="text"
+            id="search-query"
+            name="query"
+            placeholder="Search Wikipedia articles..."
+            class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+          />
+          <button
+            type="submit"
+            class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            Search
+          </button>
+          <button
+            id="browse-btn"
+            type="button"
+            class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          >
+            Browse All
+          </button>
+        </form>
+      </div>
+
+      <div id="file-info" class="mb-6 p-4 bg-gray-100 rounded-xl hidden">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <svg
+              class="w-6 h-6 text-blue-500"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <polyline
+                points="14 2 14 8 20 8"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <div>
+              <span
+                id="file-name"
+                class="font-medium text-gray-700 block"
+              ></span>
+              <span id="file-metadata" class="text-xs text-gray-500"></span>
+            </div>
+          </div>
+          <button
+            id="clean-cache-btn"
+            class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+          >
+            Clean Cache
+          </button>
+        </div>
+      </div>
+
+      <div id="content-display" class="hidden">
+        <div id="article-controls" class="flex gap-2 mb-4">
+          <button
+            id="back-to-results-btn"
+            class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md"
+          >
+            ← Back to Results
+          </button>
+        </div>
+        <div id="article-content" class="mediawiki mw-body"></div>
+      </div>
+
+      <div
+        id="search-results-display"
+        class="bg-white rounded-xl shadow p-6 max-h-[70vh] overflow-y-auto"
+      >
+        <h2 class="text-xl font-semibold mb-4">Articles</h2>
+        <div id="results-list" class="space-y-2"></div>
+      </div>
+
+      <div id="loading-spinner" class="mt-8 text-center hidden">
+        <div
+          class="spinner inline-block w-8 h-8 border-4 border-gray-200 rounded-full"
+        ></div>
+        <p class="text-gray-500 mt-2">Loading...</p>
+      </div>
+    </div>
+
+    <script>
+      let currentFilePath = null;
+
+      function formatBytes(bytes) {
+        if (bytes === 0) return "0 Bytes";
+        const k = 1024;
+        const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+      }
+
+      function showLoadingSpinner(show) {
+        const spinner = document.getElementById("loading-spinner");
+        if (show) {
+          spinner.classList.remove("hidden");
+        } else {
+          spinner.classList.add("hidden");
+        }
+      }
+
+      function hideAllContent() {
+        document.getElementById("content-display").classList.add("hidden");
+        document
+          .getElementById("search-results-display")
+          .classList.add("hidden");
+      }
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        // Load current file info
+        try {
+          const response = await fetch("/current_file");
+          if (response.ok) {
+            const data = await response.json();
+            if (data.file_path) {
+              currentFilePath = data.file_path;
+              document.getElementById("file-info").classList.remove("hidden");
+              document.getElementById("file-name").textContent =
+                data.file_name || "Wikipedia ZIM";
+              document.getElementById("file-metadata").textContent =
+                `Size: ${formatBytes(data.file_size || 0)} | Articles: ${data.article_count || 0}`;
+
+              // Automatically browse content
+              document.getElementById("browse-btn").click();
+            }
+          }
+        } catch (e) {
+          console.error("Error loading current file info:", e);
+        }
+
+        // Set up event listeners
+        document
+          .getElementById("upload-new-btn")
+          .addEventListener("click", () => {
+            window.location.href = "/";
+          });
+
+        document
+          .getElementById("search-form")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const query = document.getElementById("search-query").value.trim();
+            if (!query || !currentFilePath) return;
+
+            hideAllContent();
+            showLoadingSpinner(true);
+
+            try {
+              const response = await fetch("/search", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  query: query,
+                  file_path: currentFilePath,
+                }),
+              });
+
+              showLoadingSpinner(false);
+
+              if (response.ok) {
+                const results = await response.json();
+                const resultsList = document.getElementById("results-list");
+                resultsList.innerHTML = "";
+
+                if (results.length > 0) {
+                  results.forEach((article) => {
+                    const articleLink = document.createElement("a");
+                    articleLink.href = "#";
+                    articleLink.className =
+                      "block p-2 hover:bg-gray-100 rounded";
+                    articleLink.textContent = article.title;
+                    articleLink.onclick = (e) => {
+                      e.preventDefault();
+                      fetchArticle(article.title);
+                    };
+                    resultsList.appendChild(articleLink);
+                  });
+                  document
+                    .getElementById("search-results-display")
+                    .classList.remove("hidden");
+                } else {
+                  resultsList.innerHTML = `<p class="text-gray-500">No results found for "${query}".</p>`;
+                  document
+                    .getElementById("search-results-display")
+                    .classList.remove("hidden");
+                }
+              } else {
+                const errorText = await response.text();
+                resultsList.innerHTML = `<p class="text-red-500">Error: ${errorText}</p>`;
+                document
+                  .getElementById("search-results-display")
+                  .classList.remove("hidden");
+              }
+            } catch (e) {
+              showLoadingSpinner(false);
+              document.getElementById("results-list").innerHTML =
+                `<p class="text-red-500">Error: ${e.message}</p>`;
+              document
+                .getElementById("search-results-display")
+                .classList.remove("hidden");
+            }
+          });
+
+        document
+          .getElementById("browse-btn")
+          .addEventListener("click", async () => {
+            if (!currentFilePath) return;
+
+            hideAllContent();
+            showLoadingSpinner(true);
+
+            try {
+              const response = await fetch("/browse", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ file_path: currentFilePath }),
+              });
+
+              showLoadingSpinner(false);
+
+              if (response.ok) {
+                const results = await response.json();
+                const resultsList = document.getElementById("results-list");
+                resultsList.innerHTML = "";
+
+                if (results.length > 0) {
+                  results.forEach((article) => {
+                    const articleLink = document.createElement("a");
+                    articleLink.href = "#";
+                    articleLink.className =
+                      "block p-2 hover:bg-gray-100 rounded";
+                    articleLink.textContent = article.title;
+                    articleLink.onclick = (e) => {
+                      e.preventDefault();
+                      fetchArticle(article.title);
+                    };
+                    resultsList.appendChild(articleLink);
+                  });
+                  document
+                    .getElementById("search-results-display")
+                    .classList.remove("hidden");
+                } else {
+                  resultsList.innerHTML = `<p class="text-gray-500">No articles found in archive.</p>`;
+                  document
+                    .getElementById("search-results-display")
+                    .classList.remove("hidden");
+                }
+              } else {
+                const errorText = await response.text();
+                resultsList.innerHTML = `<p class="text-red-500">Error: ${errorText}</p>`;
+                document
+                  .getElementById("search-results-display")
+                  .classList.remove("hidden");
+              }
+            } catch (e) {
+              showLoadingSpinner(false);
+              resultsList.innerHTML = `<p class="text-red-500">Error: ${e.message}</p>`;
+              document
+                .getElementById("search-results-display")
+                .classList.remove("hidden");
+            }
+          });
+
+        document
+          .getElementById("clean-cache-btn")
+          .addEventListener("click", async () => {
+            if (
+              !confirm(
+                "Are you sure you want to clean the cache? This will remove all uploaded files.",
+              )
+            ) {
+              return;
+            }
+
+            showLoadingSpinner(true);
+            try {
+              const response = await fetch("/clean_cache", { method: "POST" });
+              if (response.ok) {
+                alert("Cache cleaned successfully.");
+                window.location.href = "/";
+              } else {
+                const errorText = await response.text();
+                alert(`Error: ${errorText}`);
+              }
+            } catch (e) {
+              alert(`Error: ${e.message}`);
+            } finally {
+              showLoadingSpinner(false);
+            }
+          });
+
+        document
+          .getElementById("back-to-results-btn")
+          .addEventListener("click", () => {
+            document.getElementById("content-display").classList.add("hidden");
+            document
+              .getElementById("search-results-display")
+              .classList.remove("hidden");
+          });
+      });
+
+      async function fetchArticle(title) {
+        const articleContent = document.getElementById("article-content");
+        const contentDisplay = document.getElementById("content-display");
+
+        articleContent.innerHTML = "Loading article...";
+        showLoadingSpinner(true);
+        contentDisplay.classList.remove("hidden");
+        document
+          .getElementById("search-results-display")
+          .classList.add("hidden");
+
+        try {
+          const response = await fetch(`/article/${encodeURIComponent(title)}`);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch article: ${response.statusText}`);
+          }
+          const content = await response.text();
+          articleContent.innerHTML = applyWikipediaStyling(content);
+        } catch (error) {
+          articleContent.innerHTML = `<p class="text-red-500">Error loading article: ${error.message}</p>`;
+        } finally {
+          showLoadingSpinner(false);
+        }
+      }
+
+      function applyWikipediaStyling(htmlContent) {
+        const container = document.createElement("div");
+        container.className = "mediawiki mw-body";
+        container.innerHTML = htmlContent;
+        return container.innerHTML;
+      }
+    </script>
+  </body>
+</html>
