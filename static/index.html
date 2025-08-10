@@ -263,13 +263,13 @@
         <div class="flex items-center space-x-2">
           <button
             id="remove-file-btn"
-            class="text-red-500 hover:text-red-700 font-semibold text-sm transition-colors duration-200"
+            class="rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors duration-200"
           >
             Remove
           </button>
           <button
             id="clean-cache-btn"
-            class="text-gray-500 hover:text-gray-700 font-semibold text-sm transition-colors duration-200"
+            class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors duration-200"
           >
             Clean Cache
           </button>
@@ -310,10 +310,27 @@
           >
             Search
           </button>
+          <button
+            id="browse-btn"
+            type="button"
+            class="inline-flex items-center rounded-md border border-transparent bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          >
+            Browse
+          </button>
         </form>
       </div>
 
       <div id="content-display" class="mt-8 hidden"></div>
+      <div id="gemini-summary-container" class="mt-8 hidden">
+        <h3 class="text-xl font-semibold mb-2">Article Summary ✨</h3>
+        <div
+          id="gemini-summary"
+          class="p-4 bg-blue-50 rounded-lg text-gray-800"
+        ></div>
+      </div>
+      <div id="gemini-tts-container" class="mt-8 hidden">
+        <audio id="tts-audio" controls></audio>
+      </div>
 
       <div
         id="search-results-display"
@@ -351,6 +368,10 @@
       function hideAllContent() {
         document.getElementById("content-display").classList.add("hidden");
         document
+          .getElementById("gemini-summary-container")
+          .classList.add("hidden");
+        document.getElementById("gemini-tts-container").classList.add("hidden");
+        document
           .getElementById("search-results-display")
           .classList.add("hidden");
         document.getElementById("status").innerHTML = "";
@@ -387,7 +408,6 @@
           form.classList.add("hidden");
           hideAllContent();
           searchContainer.classList.add("hidden");
-
           progressContainer.classList.remove("hidden");
           progressBar.style.width = "0%";
           progressText.textContent = "0 MB processed";
@@ -599,12 +619,21 @@
 
       async function fetchArticle(title) {
         const articleContentDiv = document.getElementById("content-display");
+        const summaryContainer = document.getElementById(
+          "gemini-summary-container",
+        );
+        const ttsContainer = document.getElementById("gemini-tts-container");
+        const searchResultsDisplay = document.getElementById(
+          "search-results-display",
+        );
+
         articleContentDiv.innerHTML = "Loading article...";
-        document
-          .getElementById("search-results-display")
-          .classList.add("hidden");
+        summaryContainer.classList.add("hidden");
+        ttsContainer.classList.add("hidden");
+        searchResultsDisplay.classList.add("hidden");
         articleContentDiv.classList.remove("hidden");
         showLoadingSpinner(true);
+
         try {
           const response = await fetch(`/article/${encodeURIComponent(title)}`);
           if (!response.ok) {
@@ -612,21 +641,41 @@
           }
           const content = await response.text();
           const styledContent = applyWikipediaStyling(content);
+
           const buttonContainer = document.createElement("div");
-          buttonContainer.className = "flex items-center space-x-4 mb-4";
+          buttonContainer.className =
+            "flex flex-wrap items-center space-x-2 sm:space-x-4 mb-4";
+
+          // Back Button
           const backButton = document.createElement("button");
           backButton.textContent = "Back to Results";
           backButton.className =
-            "inline-flex items-center rounded-md border border-blue-300 bg-white px-4 py-2 text-sm font-medium text-blue-500 shadow-sm hover:bg-gray-50 hover:text-blue-700 hover:border-blue-500 transition-colors duration-200";
+            "inline-flex items-center rounded-md border border-blue-300 bg-white px-4 py-2 text-sm font-medium text-blue-500 shadow-sm hover:bg-gray-50 hover:text-blue-700 hover:border-blue-500 transition-colors duration-200 mt-2 sm:mt-0";
           backButton.onclick = () => {
             articleContentDiv.classList.add("hidden");
-            document
-              .getElementById("search-results-display")
-              .classList.remove("hidden");
-            articleContentDiv.innerHTML = ""; // Clear content for next use
+            searchResultsDisplay.classList.remove("hidden");
+            summaryContainer.classList.add("hidden");
+            ttsContainer.classList.add("hidden");
+            articleContentDiv.innerHTML = "";
           };
-
           buttonContainer.appendChild(backButton);
+
+          // Summarize Button
+          const summarizeButton = document.createElement("button");
+          summarizeButton.textContent = "Summarize Article ✨ (Coming soon)";
+          summarizeButton.className =
+            "inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors duration-200 mt-2 sm:mt-0";
+          summarizeButton.onclick = () => summarizeArticle(content);
+          buttonContainer.appendChild(summarizeButton);
+
+          // Read Aloud Button
+          const ttsButton = document.createElement("button");
+          ttsButton.textContent = "Read Aloud 🗣️ (Coming soon)";
+          ttsButton.className =
+            "inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors duration-200 mt-2 sm:mt-0";
+          ttsButton.onclick = () => readArticleAloud(content);
+          buttonContainer.appendChild(ttsButton);
+
           articleContentDiv.innerHTML = "";
           articleContentDiv.appendChild(buttonContainer);
           articleContentDiv.innerHTML += styledContent;
@@ -641,12 +690,176 @@
         }
       }
 
+      // Gemini LLM Text Generation for Summary
+      async function summarizeArticle(content) {
+        const summaryDiv = document.getElementById("gemini-summary");
+        const summaryContainer = document.getElementById(
+          "gemini-summary-container",
+        );
+        summaryContainer.classList.remove("hidden");
+        summaryDiv.innerHTML = `<div class="flex items-center space-x-2"><div class="spinner w-5 h-5"></div><p>Generating summary...</p></div>`;
+
+        try {
+          const prompt = `Summarize the following article in a clear and concise manner, with a maximum of 3 sentences. Do not use bullet points or lists, only plain text. Article: "${content.substring(0, 5000)}"`;
+
+          let chatHistory = [];
+          chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+          const payload = { contents: chatHistory };
+          const apiKey = "";
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) {
+            throw new Error(`API call failed with status: ${response.status}`);
+          }
+
+          const result = await response.json();
+          const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+          if (text) {
+            summaryDiv.innerHTML = `<p>${text}</p>`;
+          } else {
+            summaryDiv.innerHTML = `<p class="text-red-500">Error: Could not retrieve summary.</p>`;
+          }
+        } catch (e) {
+          console.error("Error generating summary:", e);
+          summaryDiv.innerHTML = `<p class="text-red-500">Error generating summary: ${e.message}</p>`;
+        }
+      }
+
+      // Gemini TTS Audio generation
+      async function readArticleAloud(content) {
+        const ttsAudio = document.getElementById("tts-audio");
+        const ttsContainer = document.getElementById("gemini-tts-container");
+
+        ttsContainer.classList.remove("hidden");
+        ttsAudio.src = ""; // Clear previous audio
+        ttsAudio.pause();
+
+        try {
+          const prompt = `Say in a clear and informative tone: ${content.substring(0, 1000)}`;
+
+          const base64ToArrayBuffer = (base64) => {
+            const binaryString = atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+          };
+
+          const pcmToWav = (pcm, sampleRate = 16000) => {
+            const numChannels = 1;
+            const sampleBits = 16;
+            const byteRate = (sampleRate * numChannels * sampleBits) / 8;
+            const blockAlign = (numChannels * sampleBits) / 8;
+
+            const buffer = new ArrayBuffer(44 + pcm.length * 2);
+            const view = new DataView(buffer);
+
+            // RIFF chunk descriptor
+            writeString(view, 0, "RIFF");
+            view.setUint32(4, 36 + pcm.length * 2, true);
+            writeString(view, 8, "WAVE");
+
+            // FMT sub-chunk
+            writeString(view, 12, "fmt ");
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true); // AudioFormat: 1 for PCM
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, sampleBits, true);
+
+            // Data sub-chunk
+            writeString(view, 36, "data");
+            view.setUint32(40, pcm.length * 2, true);
+
+            let offset = 44;
+            for (let i = 0; i < pcm.length; i++, offset += 2) {
+              view.setInt16(offset, pcm[i], true);
+            }
+
+            return new Blob([view], { type: "audio/wav" });
+          };
+
+          const writeString = (view, offset, string) => {
+            for (let i = 0; i < string.length; i++) {
+              view.setUint8(offset + i, string.charCodeAt(i));
+            }
+          };
+
+          const payload = {
+            contents: [
+              {
+                parts: [{ text: prompt }],
+              },
+            ],
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: "Puck" },
+                },
+              },
+            },
+            model: "gemini-2.5-flash-preview-tts",
+          };
+          const apiKey = "";
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) {
+            throw new Error(
+              `TTS API call failed with status: ${response.status}`,
+            );
+          }
+
+          const result = await response.json();
+          const part = result?.candidates?.[0]?.content?.parts?.[0];
+          const audioData = part?.inlineData?.data;
+          const mimeType = part?.inlineData?.mimeType;
+
+          if (audioData && mimeType && mimeType.startsWith("audio/")) {
+            const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+            const sampleRate = sampleRateMatch
+              ? parseInt(sampleRateMatch[1], 10)
+              : 16000;
+            const pcmData = base64ToArrayBuffer(audioData);
+            const pcm16 = new Int16Array(pcmData);
+            const wavBlob = pcmToWav(pcm16, sampleRate);
+            const audioUrl = URL.createObjectURL(wavBlob);
+            ttsAudio.src = audioUrl;
+            ttsAudio.play();
+          } else {
+            throw new Error(
+              "TTS response missing audio data or invalid mime type.",
+            );
+          }
+        } catch (e) {
+          console.error("Error generating TTS:", e);
+          const errorMsgDiv = document.createElement("div");
+          errorMsgDiv.className = "p-4 bg-red-100 text-red-700 rounded-lg mt-4";
+          errorMsgDiv.textContent = `Error reading article aloud: ${e.message}`;
+          ttsContainer.appendChild(errorMsgDiv);
+        }
+      }
+
       function applyWikipediaStyling(htmlContent) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlContent, "text/html");
         const body = doc.body;
-
-        // Add a style block to override ZIM file's CSS with higher specificity
         const customStyle = document.createElement("style");
         customStyle.innerHTML = `
           .mediawiki h1, .mediawiki h2, .mediawiki h3 {
@@ -669,7 +882,6 @@
         `;
         doc.head.appendChild(customStyle);
 
-        // Add Wikipedia's container and body classes
         const mainContainer = document.createElement("div");
         mainContainer.classList.add(
           "mediawiki",
@@ -697,18 +909,15 @@
         bodyContentDiv.id = "bodyContent";
         bodyContentDiv.className = "content mw-parser-output";
 
-        // Move the article content into the new bodyContent div
         while (body.firstChild) {
           bodyContentDiv.appendChild(body.firstChild);
         }
 
-        // Build the new structure
         contentDiv.appendChild(bodyContentDiv);
         pageCenterDiv.appendChild(contentDiv);
         viewportDiv.appendChild(pageCenterDiv);
         mainContainer.appendChild(viewportDiv);
 
-        // Apply specific classes to headings and other elements
         mainContainer
           .querySelectorAll("h1.section-heading .mw-headline")
           .forEach((h1) => h1.classList.add("mw-page-title-main"));
@@ -719,7 +928,6 @@
           .querySelectorAll("h3.section-heading .mw-headline")
           .forEach((h3) => h3.classList.add("mw-headline"));
 
-        // Replace the body's content with the new styled container
         const newBody = document.createElement("div");
         newBody.appendChild(mainContainer);
         return newBody.innerHTML;
