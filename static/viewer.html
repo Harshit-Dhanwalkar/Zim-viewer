@@ -8,6 +8,13 @@
     <style>
       body {
         font-family: "Inter", sans-serif;
+        transition:
+          background-color 0.3s,
+          color 0.3s;
+      }
+      .dark-mode {
+        background-color: #1a202c;
+        color: #e2e8f0;
       }
       .spinner {
         border-top-color: #3b82f6;
@@ -31,57 +38,198 @@
         }
       }
 
-      /* Wikipedia article styling */
       .mediawiki {
         font-family: sans-serif;
         line-height: 1.6;
-        color: #202122;
-        background-color: #f8f9fa;
+        color: var(--text-color, #202122);
+        background-color: var(--bg-color, #f8f9fa);
+        transition: all 0.3s;
       }
       .mw-body {
-        max-width: 800px;
         margin: auto;
         padding: 1em;
-        background-color: #fff;
-        border: 1px solid #a2a9b1;
+        background-color: var(--content-bg, #fff);
+        border: 1px solid var(--border-color, #a2a9b1);
         border-radius: 8px;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s;
+      }
+      .mw-body.standard-width {
+        max-width: 800px;
+      }
+      .mw-body.wide-width {
+        max-width: 1200px;
       }
       .mw-page-title-main {
-        font-size: 2em;
+        font-size: var(--title-size, 2em);
         font-weight: normal;
         margin-bottom: 0.3em;
         padding-bottom: 0.3em;
-        border-bottom: 1px solid #a2a9b1;
+        border-bottom: 1px solid var(--border-color, #a2a9b1);
       }
       h2 .mw-headline {
-        font-size: 1.5em;
+        font-size: var(--heading2-size, 1.5em);
         font-weight: normal;
-        border-bottom: 1px solid #a2a9b1;
+        border-bottom: 1px solid var(--border-color, #a2a9b1);
         padding-bottom: 0.17em;
         margin: 1em 0 0.5em;
       }
       h3 .mw-headline {
-        font-size: 1.2em;
+        font-size: var(--heading3-size, 1.2em);
         font-weight: bold;
         margin: 1em 0 0.5em;
       }
-      p {
+      p,
+      li,
+      td,
+      th,
+      dd,
+      dt {
+        font-size: var(--text-size, 1em);
         margin: 1em 0;
       }
       a {
-        color: #36c;
+        color: var(--link-color, #36c);
         text-decoration: none;
       }
       a:hover {
         text-decoration: underline;
       }
+
+      /* Dark mode variables */
+      .dark-mode .mediawiki {
+        --text-color: #e2e8f0;
+        --bg-color: #2d3748;
+        --content-bg: #1a202c;
+        --border-color: #4a5568;
+        --link-color: #63b3ed;
+      }
+
+      /* Text size classes */
+      .text-small {
+        --text-size: 0.875em;
+        --title-size: 1.75em;
+        --heading2-size: 1.25em;
+        --heading3-size: 1em;
+      }
+      .text-standard {
+        --text-size: 1em;
+        --title-size: 2em;
+        --heading2-size: 1.5em;
+        --heading3-size: 1.2em;
+      }
+      .text-large {
+        --text-size: 1.125em;
+        --title-size: 2.25em;
+        --heading2-size: 1.75em;
+        --heading3-size: 1.4em;
+      }
+
+      /* Reading preferences panel */
+      .reading-preferences {
+        position: fixed;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background-color: var(--content-bg, white);
+        border: 1px solid var(--border-color, #a2a9b1);
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        width: 200px;
+      }
+      .pref-toggle {
+        position: fixed;
+        right: 1rem;
+        top: 1rem;
+        background-color: var(--content-bg, white);
+        border: 1px solid var(--border-color, #a2a9b1);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 101;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+      .pref-group {
+        margin-bottom: 1rem;
+      }
+      .pref-title {
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+        display: block;
+      }
+      .pref-option {
+        display: block;
+        margin: 0.25rem 0;
+        cursor: pointer;
+      }
+      .pref-option input {
+        margin-right: 0.5rem;
+      }
     </style>
   </head>
   <body class="bg-gray-50 text-gray-800 min-h-screen">
+    <div class="pref-toggle" id="pref-toggle">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-5 w-5"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+      >
+        <path
+          fill-rule="evenodd"
+          d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+          clip-rule="evenodd"
+        />
+      </svg>
+    </div>
+
+    <div class="reading-preferences hidden" id="reading-prefs">
+      <div class="pref-group">
+        <span class="pref-title">Text size</span>
+        <label class="pref-option">
+          <input type="radio" name="text-size" value="small" checked /> Small
+        </label>
+        <label class="pref-option">
+          <input type="radio" name="text-size" value="standard" /> Standard
+        </label>
+        <label class="pref-option">
+          <input type="radio" name="text-size" value="large" /> Large
+        </label>
+      </div>
+
+      <div class="pref-group">
+        <span class="pref-title">Color theme</span>
+        <label class="pref-option">
+          <input type="radio" name="color-theme" value="light" checked /> Light
+        </label>
+        <label class="pref-option">
+          <input type="radio" name="color-theme" value="dark" /> Dark
+        </label>
+      </div>
+
+      <div class="pref-group">
+        <span class="pref-title">Page width</span>
+        <label class="pref-option">
+          <input type="radio" name="page-width" value="standard" checked />
+          Standard
+        </label>
+        <label class="pref-option">
+          <input type="radio" name="page-width" value="wide" /> Wide
+        </label>
+      </div>
+    </div>
+
     <div class="container mx-auto px-4 py-8">
       <header class="flex justify-between items-center mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">ZIM Viewer</h1>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          ZIM Viewer
+        </h1>
         <button
           id="upload-new-btn"
           class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
@@ -97,7 +245,7 @@
             id="search-query"
             name="query"
             placeholder="Search Wikipedia articles..."
-            class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+            class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           />
           <button
             type="submit"
@@ -108,14 +256,17 @@
           <button
             id="browse-btn"
             type="button"
-            class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600"
           >
             Browse All
           </button>
         </form>
       </div>
 
-      <div id="file-info" class="mb-6 p-4 bg-gray-100 rounded-xl hidden">
+      <div
+        id="file-info"
+        class="mb-6 p-4 bg-gray-100 rounded-xl dark:bg-gray-700 hidden"
+      >
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-3">
             <svg
@@ -142,14 +293,17 @@
             <div>
               <span
                 id="file-name"
-                class="font-medium text-gray-700 block"
+                class="font-medium text-gray-700 dark:text-gray-200 block"
               ></span>
-              <span id="file-metadata" class="text-xs text-gray-500"></span>
+              <span
+                id="file-metadata"
+                class="text-xs text-gray-500 dark:text-gray-400"
+              ></span>
             </div>
           </div>
           <button
             id="clean-cache-btn"
-            class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+            class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-200"
           >
             Clean Cache
           </button>
@@ -160,19 +314,22 @@
         <div id="article-controls" class="flex gap-2 mb-4">
           <button
             id="back-to-results-btn"
-            class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md"
+            class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
           >
             ← Back to Results
           </button>
         </div>
-        <div id="article-content" class="mediawiki mw-body"></div>
+        <div
+          id="article-content"
+          class="mediawiki mw-body standard-width text-standard"
+        ></div>
       </div>
 
       <div
         id="search-results-display"
-        class="bg-white rounded-xl shadow p-6 max-h-[70vh] overflow-y-auto"
+        class="bg-white rounded-xl shadow p-6 max-h-[70vh] overflow-y-auto dark:bg-gray-700 dark:text-gray-200"
       >
-        <h2 class="text-xl font-semibold mb-4">Articles</h2>
+        <h2 class="text-xl font-semibold mb-4">Wikipedia Articles</h2>
         <div id="results-list" class="space-y-2"></div>
       </div>
 
@@ -180,12 +337,66 @@
         <div
           class="spinner inline-block w-8 h-8 border-4 border-gray-200 rounded-full"
         ></div>
-        <p class="text-gray-500 mt-2">Loading...</p>
+        <p class="text-gray-500 dark:text-gray-400 mt-2">Loading...</p>
       </div>
     </div>
 
     <script>
       let currentFilePath = null;
+      let readingPrefsVisible = false;
+
+      function initPreferences() {
+        // Text size
+        const savedSize = localStorage.getItem("textSize") || "standard";
+        document.querySelector(
+          `input[name="text-size"][value="${savedSize}"]`,
+        ).checked = true;
+        applyTextSize(savedSize);
+
+        // Color theme
+        const savedTheme = localStorage.getItem("colorTheme") || "light";
+        document.querySelector(
+          `input[name="color-theme"][value="${savedTheme}"]`,
+        ).checked = true;
+        applyColorTheme(savedTheme);
+
+        // Page width
+        const savedWidth = localStorage.getItem("pageWidth") || "standard";
+        document.querySelector(
+          `input[name="page-width"][value="${savedWidth}"]`,
+        ).checked = true;
+        applyPageWidth(savedWidth);
+      }
+
+      // Apply text size preference
+      function applyTextSize(size) {
+        const articleContent = document.getElementById("article-content");
+        articleContent.classList.remove(
+          "text-small",
+          "text-standard",
+          "text-large",
+        );
+        articleContent.classList.add(`text-${size}`);
+        localStorage.setItem("textSize", size);
+      }
+
+      // Apply color theme preference
+      function applyColorTheme(theme) {
+        if (theme === "dark") {
+          document.body.classList.add("dark-mode");
+        } else {
+          document.body.classList.remove("dark-mode");
+        }
+        localStorage.setItem("colorTheme", theme);
+      }
+
+      // Apply page width preference
+      function applyPageWidth(width) {
+        const articleContent = document.getElementById("article-content");
+        articleContent.classList.remove("standard-width", "wide-width");
+        articleContent.classList.add(`${width}-width`);
+        localStorage.setItem("pageWidth", width);
+      }
 
       function formatBytes(bytes) {
         if (bytes === 0) return "0 Bytes";
@@ -212,6 +423,42 @@
       }
 
       document.addEventListener("DOMContentLoaded", async () => {
+        // Initialize reading preferences
+        initPreferences();
+
+        // Set up preference toggle
+        document.getElementById("pref-toggle").addEventListener("click", () => {
+          readingPrefsVisible = !readingPrefsVisible;
+          document
+            .getElementById("reading-prefs")
+            .classList.toggle("hidden", !readingPrefsVisible);
+        });
+
+        // Set up preference change listeners
+        document
+          .querySelectorAll('input[name="text-size"]')
+          .forEach((radio) => {
+            radio.addEventListener("change", (e) =>
+              applyTextSize(e.target.value),
+            );
+          });
+
+        document
+          .querySelectorAll('input[name="color-theme"]')
+          .forEach((radio) => {
+            radio.addEventListener("change", (e) =>
+              applyColorTheme(e.target.value),
+            );
+          });
+
+        document
+          .querySelectorAll('input[name="page-width"]')
+          .forEach((radio) => {
+            radio.addEventListener("change", (e) =>
+              applyPageWidth(e.target.value),
+            );
+          });
+
         // Load current file info
         try {
           const response = await fetch("/current_file");
@@ -272,7 +519,7 @@
                     const articleLink = document.createElement("a");
                     articleLink.href = "#";
                     articleLink.className =
-                      "block p-2 hover:bg-gray-100 rounded";
+                      "block p-2 hover:bg-gray-100 rounded dark:hover:bg-gray-600";
                     articleLink.textContent = article.title;
                     articleLink.onclick = (e) => {
                       e.preventDefault();
@@ -284,7 +531,7 @@
                     .getElementById("search-results-display")
                     .classList.remove("hidden");
                 } else {
-                  resultsList.innerHTML = `<p class="text-gray-500">No results found for "${query}".</p>`;
+                  resultsList.innerHTML = `<p class="text-gray-500 dark:text-gray-400">No results found for "${query}".</p>`;
                   document
                     .getElementById("search-results-display")
                     .classList.remove("hidden");
@@ -333,7 +580,7 @@
                     const articleLink = document.createElement("a");
                     articleLink.href = "#";
                     articleLink.className =
-                      "block p-2 hover:bg-gray-100 rounded";
+                      "block p-2 hover:bg-gray-100 rounded dark:hover:bg-gray-600";
                     articleLink.textContent = article.title;
                     articleLink.onclick = (e) => {
                       e.preventDefault();
@@ -345,7 +592,7 @@
                     .getElementById("search-results-display")
                     .classList.remove("hidden");
                 } else {
-                  resultsList.innerHTML = `<p class="text-gray-500">No articles found in archive.</p>`;
+                  resultsList.innerHTML = `<p class="text-gray-500 dark:text-gray-400">No articles found in archive.</p>`;
                   document
                     .getElementById("search-results-display")
                     .classList.remove("hidden");
