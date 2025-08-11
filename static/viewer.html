@@ -6,16 +6,6 @@
     <title>Rust ZIM Viewer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      body {
-        font-family: "Inter", sans-serif;
-        transition:
-          background-color 0.3s,
-          color 0.3s;
-      }
-      .dark-mode {
-        background-color: #1a202c;
-        color: #e2e8f0;
-      }
       .spinner {
         border-top-color: #3b82f6;
         -webkit-animation: spin 1s linear infinite;
@@ -36,6 +26,88 @@
         100% {
           transform: rotate(360deg);
         }
+      }
+
+      .dark {
+        background-color: #0c0a09;
+        color: #e5e7eb;
+      }
+      .dark .bg-gray-900 {
+        background-color: #1f2937;
+      }
+      .dark .text-white {
+        color: #fff;
+      }
+      .dark .text-gray-400 {
+        color: #9ca3af;
+      }
+      .dark .border-gray-700 {
+        border-color: #374151;
+      }
+      .dark .bg-gray-800 {
+        background-color: #1f2937;
+      }
+      .dark .text-gray-300 {
+        color: #d1d5db;
+      }
+      .dark .text-gray-500 {
+        color: #6b7280;
+      }
+      .dark .border-red-700 {
+        border-color: #dc2626;
+      }
+      .dark .text-red-400 {
+        color: #fca5a5;
+      }
+      .dark .hover:bg-red-900:hover {
+        background-color: #7f1d1d;
+      }
+      .dark .bg-gray-700 {
+        background-color: #374151;
+      }
+      .dark .bg-red-900 {
+        background-color: #7f1d1d;
+      }
+      .dark .text-red-300 {
+        color: #fca5a5;
+      }
+
+      .light {
+        background-color: #fafafa;
+        color: #374151;
+      }
+      .light .bg-white {
+        background-color: #fff;
+      }
+      .light .text-gray-900 {
+        color: #111827;
+      }
+      .light .text-gray-600 {
+        color: #4b5563;
+      }
+      .light .border-gray-300 {
+        border-color: #d1d5db;
+      }
+      .light .bg-gray-100 {
+        background-color: #f3f4f6;
+      }
+      .light .text-gray-700 {
+        color: #374151;
+      }
+      .light .border-red-300 {
+        border-color: #fca5a5;
+      }
+      .light .text-red-700 {
+        color: #b91c1c;
+      }
+      .light .hover:bg-red-50:hover {
+        background-color: #fef2f2;
+      }
+      .light .bg-gray-200 {
+        background-color: #e5e7eb;
+      }
+      .light .bg-red-100 {
+        background-color: #fef2f2;
       }
 
       .mediawiki {
@@ -97,7 +169,7 @@
       }
 
       /* Dark mode variables */
-      .dark-mode .mediawiki {
+      .dark .mediawiki {
         --text-color: #e2e8f0;
         --bg-color: #2d3748;
         --content-bg: #1a202c;
@@ -129,8 +201,7 @@
       .reading-preferences {
         position: fixed;
         right: 1rem;
-        top: 50%;
-        transform: translateY(-50%);
+        top: 5rem;
         background-color: var(--content-bg, white);
         border: 1px solid var(--border-color, #a2a9b1);
         border-radius: 8px;
@@ -171,61 +242,101 @@
       .pref-option input {
         margin-right: 0.5rem;
       }
+      #pref-toggle {
+        position: fixed;
+        top: 1rem;
+        right: 4rem; /* Adjusted to be left of theme toggle */
+        background-color: var(--content-bg, white);
+        border: 1px solid var(--border-color, #a2a9b1);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 101;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
     </style>
   </head>
-  <body class="bg-gray-50 text-gray-800 min-h-screen">
-    <div class="pref-toggle" id="pref-toggle">
+  <body
+    class="light flex flex-col min-h-screen p-4 transition-colors duration-300"
+  >
+    <button
+      id="theme-toggle"
+      type="button"
+      class="fixed top-4 right-4 p-2 rounded-full transition-colors duration-200"
+    >
       <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="h-5 w-5"
-        viewBox="0 0 20 20"
+        id="sun-icon"
+        class="w-6 h-6 text-yellow-500"
         fill="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.18a.75.75 0 00-1.061-1.061l-1.591 1.59a.75.75 0 101.06 1.06l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5h2.25a.75.75 0 01.75.75zM16.442 18.894a.75.75 0 001.06 1.06l1.591-1.59a.75.75 0 00-1.06-1.06l-1.591 1.59zM12 21.75a.75.75 0 01-.75-.75v-2.25a.75.75 0 011.5 0v2.25a.75.75 0 01-.75.75zM7.558 18.894a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.06l1.59-1.59zM3 12a.75.75 0 01.75-.75h2.25a.75.75 0 010 1.5H3.75A.75.75 0 013 12zM6.18 5.106a.75.75 0 00-1.061 1.061l1.59 1.591a.75.75 0 001.06-1.06l-1.59-1.591z"
+        />
+      </svg>
+      <svg
+        id="moon-icon"
+        class="w-6 h-6 text-gray-400 hidden"
+        fill="currentColor"
+        viewBox="0 0 24 24"
       >
         <path
           fill-rule="evenodd"
-          d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+          d="M9.525 3.29a.75.75 0 01.785-.133l1.83 5.487a.75.75 0 00.771.554l5.488.133a.75.75 0 01.401 1.378l-4.75 3.99a.75.75 0 00-.236.72l1.637 5.25a.75.75 0 01-1.155.805l-4.908-3.041a.75.75 0 00-.885 0l-4.908 3.041a.75.75 0 01-1.155-.806l1.637-5.249a.75.75 0 00-.236-.721L2.42 10.375a.75.75 0 01.401-1.378l5.488-.133a.75.75 0 00.77-.554l1.83-5.487a.75.75 0 01-.132-.785z"
           clip-rule="evenodd"
         />
       </svg>
-    </div>
+    </button>
+
+    <button
+      id="pref-toggle"
+      type="button"
+      class="fixed top-4 right-16 p-2 rounded-full transition-colors duration-200 bg-white dark:bg-gray-700 shadow"
+    >
+      <svg
+        class="w-6 h-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+        />
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+        />
+      </svg>
+    </button>
 
     <div class="reading-preferences hidden" id="reading-prefs">
       <div class="pref-group">
         <span class="pref-title">Text size</span>
         <label class="pref-option">
-          <input type="radio" name="text-size" value="small" checked /> Small
+          <input type="radio" name="text-size" value="small" /> Small
         </label>
         <label class="pref-option">
-          <input type="radio" name="text-size" value="standard" /> Standard
+          <input type="radio" name="text-size" value="standard" checked />
+          Standard
         </label>
         <label class="pref-option">
           <input type="radio" name="text-size" value="large" /> Large
         </label>
       </div>
-
-      <div class="pref-group">
-        <span class="pref-title">Color theme</span>
-        <label class="pref-option">
-          <input type="radio" name="color-theme" value="light" checked /> Light
-        </label>
-        <label class="pref-option">
-          <input type="radio" name="color-theme" value="dark" /> Dark
-        </label>
-      </div>
-
-      <div class="pref-group">
-        <span class="pref-title">Page width</span>
-        <label class="pref-option">
-          <input type="radio" name="page-width" value="standard" checked />
-          Standard
-        </label>
-        <label class="pref-option">
-          <input type="radio" name="page-width" value="wide" /> Wide
-        </label>
-      </div>
     </div>
 
-    <div class="container mx-auto px-4 py-8">
+    <div
+      class="container mx-auto px-4 py-8 max-w-4xl shadow-xl rounded-2xl p-6 sm:p-10 transition-all duration-300 bg-white"
+    >
       <header class="flex justify-between items-center mb-8">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">
           ZIM Viewer
@@ -321,7 +432,7 @@
         </div>
         <div
           id="article-content"
-          class="mediawiki mw-body standard-width text-standard"
+          class="mediawiki mw-body wide-width text-standard"
         ></div>
       </div>
 
@@ -342,62 +453,6 @@
     </div>
 
     <script>
-      let currentFilePath = null;
-      let readingPrefsVisible = false;
-
-      function initPreferences() {
-        // Text size
-        const savedSize = localStorage.getItem("textSize") || "standard";
-        document.querySelector(
-          `input[name="text-size"][value="${savedSize}"]`,
-        ).checked = true;
-        applyTextSize(savedSize);
-
-        // Color theme
-        const savedTheme = localStorage.getItem("colorTheme") || "light";
-        document.querySelector(
-          `input[name="color-theme"][value="${savedTheme}"]`,
-        ).checked = true;
-        applyColorTheme(savedTheme);
-
-        // Page width
-        const savedWidth = localStorage.getItem("pageWidth") || "standard";
-        document.querySelector(
-          `input[name="page-width"][value="${savedWidth}"]`,
-        ).checked = true;
-        applyPageWidth(savedWidth);
-      }
-
-      // Apply text size preference
-      function applyTextSize(size) {
-        const articleContent = document.getElementById("article-content");
-        articleContent.classList.remove(
-          "text-small",
-          "text-standard",
-          "text-large",
-        );
-        articleContent.classList.add(`text-${size}`);
-        localStorage.setItem("textSize", size);
-      }
-
-      // Apply color theme preference
-      function applyColorTheme(theme) {
-        if (theme === "dark") {
-          document.body.classList.add("dark-mode");
-        } else {
-          document.body.classList.remove("dark-mode");
-        }
-        localStorage.setItem("colorTheme", theme);
-      }
-
-      // Apply page width preference
-      function applyPageWidth(width) {
-        const articleContent = document.getElementById("article-content");
-        articleContent.classList.remove("standard-width", "wide-width");
-        articleContent.classList.add(`${width}-width`);
-        localStorage.setItem("pageWidth", width);
-      }
-
       function formatBytes(bytes) {
         if (bytes === 0) return "0 Bytes";
         const k = 1024;
@@ -415,49 +470,162 @@
         }
       }
 
-      function hideAllContent() {
-        document.getElementById("content-display").classList.add("hidden");
-        document
-          .getElementById("search-results-display")
-          .classList.add("hidden");
+      const body = document.body;
+      const themeToggle = document.getElementById("theme-toggle");
+      const sunIcon = document.getElementById("sun-icon");
+      const moonIcon = document.getElementById("moon-icon");
+
+      function updateThemeClasses(isDark) {
+        body.classList.toggle("light", !isDark);
+        body.classList.toggle("dark", isDark);
+
+        const card = document.querySelector(".max-w-4xl");
+        card.classList.toggle("bg-white", !isDark);
+        card.classList.toggle("bg-gray-900", isDark);
+
+        const uploadNewBtn = document.getElementById("upload-new-btn");
+        uploadNewBtn.classList.toggle("bg-blue-600", !isDark);
+        uploadNewBtn.classList.toggle("hover:bg-blue-700", !isDark);
+        uploadNewBtn.classList.toggle("bg-blue-800", isDark);
+        uploadNewBtn.classList.toggle("hover:bg-blue-700", isDark);
+
+        const searchInput = document.getElementById("search-query");
+        searchInput.classList.toggle("border-gray-300", !isDark);
+        searchInput.classList.toggle("dark:bg-gray-700", isDark);
+        searchInput.classList.toggle("dark:border-gray-600", isDark);
+        searchInput.classList.toggle("dark:text-white", isDark);
+
+        const searchBtn = document.querySelector(
+          "#search-form button[type='submit']",
+        );
+        searchBtn.classList.toggle("bg-blue-600", !isDark);
+        searchBtn.classList.toggle("hover:bg-blue-700", !isDark);
+        searchBtn.classList.toggle("bg-blue-800", isDark);
+        searchBtn.classList.toggle("hover:bg-blue-700", isDark);
+
+        const browseBtn = document.getElementById("browse-btn");
+        browseBtn.classList.toggle("border-gray-300", !isDark);
+        browseBtn.classList.toggle("bg-white", !isDark);
+        browseBtn.classList.toggle("text-gray-800", !isDark);
+        browseBtn.classList.toggle("hover:bg-gray-100", !isDark);
+        browseBtn.classList.toggle("dark:bg-gray-700", isDark);
+        browseBtn.classList.toggle("dark:border-gray-600", isDark);
+        browseBtn.classList.toggle("dark:text-white", isDark);
+        browseBtn.classList.toggle("dark:hover:bg-gray-600", isDark);
+
+        const fileInfo = document.getElementById("file-info");
+        fileInfo.classList.toggle("bg-gray-100", !isDark);
+        fileInfo.classList.toggle("dark:bg-gray-700", isDark);
+
+        const fileNameSpan = document.getElementById("file-name");
+        fileNameSpan.classList.toggle("text-gray-700", !isDark);
+        fileNameSpan.classList.toggle("dark:text-gray-200", isDark);
+
+        const fileMetadataSpan = document.getElementById("file-metadata");
+        fileMetadataSpan.classList.toggle("text-gray-500", !isDark);
+        fileMetadataSpan.classList.toggle("dark:text-gray-400", isDark);
+
+        const cleanCacheBtn = document.getElementById("clean-cache-btn");
+        cleanCacheBtn.classList.toggle("border-gray-300", !isDark);
+        cleanCacheBtn.classList.toggle("bg-white", !isDark);
+        cleanCacheBtn.classList.toggle("text-gray-700", !isDark);
+        cleanCacheBtn.classList.toggle("hover:bg-gray-50", !isDark);
+        cleanCacheBtn.classList.toggle("dark:bg-gray-600", isDark);
+        cleanCacheBtn.classList.toggle("dark:border-gray-500", isDark);
+        cleanCacheBtn.classList.toggle("dark:text-gray-200", isDark);
+
+        const backToResultsBtn = document.getElementById("back-to-results-btn");
+        backToResultsBtn.classList.toggle("bg-gray-200", !isDark);
+        backToResultsBtn.classList.toggle("hover:bg-gray-300", !isDark);
+        backToResultsBtn.classList.toggle("text-gray-800", !isDark);
+        backToResultsBtn.classList.toggle("dark:bg-gray-600", isDark);
+        backToResultsBtn.classList.toggle("dark:text-gray-200", isDark);
+        backToResultsBtn.classList.toggle("dark:hover:bg-gray-500", isDark);
+
+        const searchResultsDisplay = document.getElementById(
+          "search-results-display",
+        );
+        searchResultsDisplay.classList.toggle("bg-white", !isDark);
+        searchResultsDisplay.classList.toggle("dark:bg-gray-700", isDark);
+        searchResultsDisplay.classList.toggle("dark:text-gray-200", isDark);
+
+        const spinner = document.querySelector("#loading-spinner > div");
+        spinner.classList.toggle("border-gray-200", !isDark);
+        spinner.classList.toggle("dark:border-gray-700", isDark);
+
+        const spinnerP = document.querySelector("#loading-spinner p");
+        spinnerP.classList.toggle("text-gray-500", !isDark);
+        spinnerP.classList.toggle("dark:text-gray-400", isDark);
+      }
+
+      function setTheme(isDark) {
+        if (isDark) {
+          localStorage.setItem("theme", "dark");
+          body.classList.add("dark");
+          body.classList.remove("light");
+          sunIcon.classList.add("hidden");
+          moonIcon.classList.remove("hidden");
+        } else {
+          localStorage.setItem("theme", "light");
+          body.classList.add("light");
+          body.classList.remove("dark");
+          sunIcon.classList.remove("hidden");
+          moonIcon.classList.add("hidden");
+        }
+        updateThemeClasses(isDark);
+      }
+
+      function updateTextSize(size) {
+        const content = document.getElementById("article-content");
+        content.className = `mediawiki mw-body wide-width text-${size}`;
+        localStorage.setItem("text-size", size);
       }
 
       document.addEventListener("DOMContentLoaded", async () => {
-        // Initialize reading preferences
-        initPreferences();
+        const isSystemDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
+        const storedTheme = localStorage.getItem("theme");
+        const initialThemeIsDark =
+          storedTheme === "dark" || (storedTheme === null && isSystemDark);
+        setTheme(initialThemeIsDark);
 
-        // Set up preference toggle
-        document.getElementById("pref-toggle").addEventListener("click", () => {
-          readingPrefsVisible = !readingPrefsVisible;
-          document
-            .getElementById("reading-prefs")
-            .classList.toggle("hidden", !readingPrefsVisible);
+        themeToggle.addEventListener("click", () => {
+          const isDark = body.classList.contains("dark");
+          setTheme(!isDark);
         });
 
-        // Set up preference change listeners
-        document
-          .querySelectorAll('input[name="text-size"]')
-          .forEach((radio) => {
-            radio.addEventListener("change", (e) =>
-              applyTextSize(e.target.value),
-            );
+        // Restore text size from localStorage
+        const storedTextSize = localStorage.getItem("text-size") || "standard";
+        updateTextSize(storedTextSize);
+        const textSizeRadios = document.querySelectorAll(
+          `input[name="text-size"]`,
+        );
+        textSizeRadios.forEach((radio) => {
+          if (radio.value === storedTextSize) {
+            radio.checked = true;
+          }
+          radio.addEventListener("change", (e) => {
+            updateTextSize(e.target.value);
           });
+        });
 
-        document
-          .querySelectorAll('input[name="color-theme"]')
-          .forEach((radio) => {
-            radio.addEventListener("change", (e) =>
-              applyColorTheme(e.target.value),
-            );
-          });
+        const readingPrefsPanel = document.getElementById("reading-prefs");
+        const prefToggle = document.getElementById("pref-toggle");
 
-        document
-          .querySelectorAll('input[name="page-width"]')
-          .forEach((radio) => {
-            radio.addEventListener("change", (e) =>
-              applyPageWidth(e.target.value),
-            );
-          });
+        prefToggle.addEventListener("click", (e) => {
+          e.stopPropagation();
+          readingPrefsPanel.classList.toggle("hidden");
+        });
+
+        document.addEventListener("click", (e) => {
+          if (
+            !readingPrefsPanel.contains(e.target) &&
+            !prefToggle.contains(e.target)
+          ) {
+            readingPrefsPanel.classList.add("hidden");
+          }
+        });
 
         // Load current file info
         try {
@@ -681,6 +849,13 @@
         container.className = "mediawiki mw-body";
         container.innerHTML = htmlContent;
         return container.innerHTML;
+      }
+
+      function hideAllContent() {
+        document.getElementById("content-display").classList.add("hidden");
+        document
+          .getElementById("search-results-display")
+          .classList.add("hidden");
       }
     </script>
   </body>
